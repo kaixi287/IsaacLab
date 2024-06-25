@@ -169,7 +169,7 @@ class ActuatorBase(ABC):
 
     @abstractmethod
     def compute(
-        self, control_action: ArticulationActions, joint_pos: torch.Tensor, joint_vel: torch.Tensor
+        self, control_action: ArticulationActions, joint_pos: torch.Tensor, joint_vel: torch.Tensor, **kwargs
     ) -> ArticulationActions:
         """Process the actuator group actions and compute the articulation actions.
 

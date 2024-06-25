@@ -64,6 +64,8 @@ class ActuatorNetLSTM(DCMotor):
         self.sea_hidden_state_per_env = self.sea_hidden_state.view(layer_shape_per_env)
         self.sea_cell_state_per_env = self.sea_cell_state.view(layer_shape_per_env)
 
+        self.env_ids = torch.arange(self._num_envs, device=self._device)
+
     """
     Operations.
     """
@@ -75,7 +77,7 @@ class ActuatorNetLSTM(DCMotor):
             self.sea_cell_state_per_env[:, env_ids] = 0.0
 
     def compute(
-        self, control_action: ArticulationActions, joint_pos: torch.Tensor, joint_vel: torch.Tensor
+        self, control_action: ArticulationActions, joint_pos: torch.Tensor, joint_vel: torch.Tensor, disabled_joint_ids: torch.Tensor | None =None
     ) -> ArticulationActions:
         # compute network inputs
         self.sea_input[:, 0, 0] = (control_action.joint_positions - joint_pos).flatten()
@@ -89,6 +91,10 @@ class ActuatorNetLSTM(DCMotor):
                 self.sea_input, (self.sea_hidden_state, self.sea_cell_state)
             )
         self.computed_effort = torques.reshape(self._num_envs, self.num_joints)
+
+        if disabled_joint_ids is not None:
+            # Mask the effort for the disabled joints to be 0.
+            self.computed_effort[self.env_ids, disabled_joint_ids] = 0.0
 
         # clip the computed effort based on the motor limits
         self.applied_effort = self._clip_effort(self.computed_effort)

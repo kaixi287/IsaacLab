@@ -120,3 +120,17 @@ POSITION_GOAL_MARKER_CFG = VisualizationMarkersCfg(
     }
 )
 """Configuration for the end-effector tracking marker."""
+
+##
+# joints.
+##
+
+JOINT_MARKER_CFG = VisualizationMarkersCfg(
+    markers={
+        "blocked_joints": sim_utils.SphereCfg(
+            radius=0.1,
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 1.0, 0.0)),
+        ),
+    }
+)
+"""Configuration for the disabled joint marker."""

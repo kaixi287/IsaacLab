@@ -16,6 +16,9 @@ import cli_args  # isort: skip
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Train an RL agent with RSL-RL.")
+parser.add_argument("--video", action="store_true", default=True, help="Record videos during evaluation.")
+parser.add_argument("--video_length", type=int, default=200, help="Length of the recorded video (in steps).")
+parser.add_argument("--video_interval", type=int, default=50, help="Interval between video recordings (in steps).")
 parser.add_argument("--cpu", action="store_true", default=False, help="Use CPU pipeline.")
 parser.add_argument(
     "--disable_fabric", action="store_true", default=False, help="Disable fabric and use USD I/O operations."
@@ -38,6 +41,7 @@ simulation_app = app_launcher.app
 import gymnasium as gym
 import os
 import torch
+import numpy as np
 
 from rsl_rl.runners import OnPolicyRunner
 
@@ -59,17 +63,27 @@ def main():
     )
     agent_cfg: RslRlOnPolicyRunnerCfg = cli_args.parse_rsl_rl_cfg(args_cli.task, args_cli)
 
-    # create isaac environment
-    env = gym.make(args_cli.task, cfg=env_cfg)
-    # wrap around environment for rsl-rl
-    env = RslRlVecEnvWrapper(env)
-
     # specify directory for logging experiments
     log_root_path = os.path.join("logs", "rsl_rl", agent_cfg.experiment_name)
     log_root_path = os.path.abspath(log_root_path)
     print(f"[INFO] Loading experiment from directory: {log_root_path}")
     resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
     print(f"[INFO]: Loading model checkpoint from: {resume_path}")
+
+    # create isaac environment
+    env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
+    # wrap for video recording
+    if args_cli.video:
+        video_kwargs = {
+            "video_folder": os.path.join(log_root_path, "evaluation_videos"),
+            "step_trigger": lambda step: step % args_cli.video_interval == 0,
+            "video_length": args_cli.video_length,
+            "disable_logger": True,
+        }
+        print("[INFO] Recording videos during evaluation.")
+        env = gym.wrappers.RecordVideo(env, **video_kwargs)
+    # wrap around environment for rsl-rl
+    env = RslRlVecEnvWrapper(env)
 
     # load previously trained model
     ppo_runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
@@ -88,14 +102,55 @@ def main():
 
     # reset environment
     obs, _ = env.get_observations()
+
+    # metrics
+    num_episodes = 0
+    episode_rewards = []
+    episode_lengths = []
+
+    current_rewards = np.zeros(env.num_envs)
+    current_lengths = np.zeros(env.num_envs)
+
+    step = 0
     # simulate environment
     while simulation_app.is_running():
         # run everything in inference mode
         with torch.inference_mode():
-            # agent stepping
             actions = policy(obs)
-            # env stepping
-            obs, _, _, _ = env.step(actions)
+            obs, rewards, dones, _ = env.step(actions)
+
+            current_rewards += rewards.cpu().numpy()
+            current_lengths += 1
+
+            if np.any(dones.cpu().numpy()):
+                done_indices = np.where(dones.cpu().numpy())[0]
+                for idx in done_indices:
+                    episode_rewards.append(current_rewards[idx])
+                    episode_lengths.append(current_lengths[idx])
+                    current_rewards[idx] = 0
+                    current_lengths[idx] = 0
+                    num_episodes += 1
+
+                # Print the results so far
+                print(f"Num Episodes: {num_episodes}, Mean Reward: {np.mean(episode_rewards)}, Mean Length: {np.mean(episode_lengths)}")
+                
+                # Exit after a fixed number of episodes for evaluation
+                if num_episodes >= 100:
+                    break
+
+            # Record video at specified intervals
+            if args_cli.video and step % args_cli.video_interval == 0:
+                env.reset()
+                for _ in range(args_cli.video_length):
+                    with torch.inference_mode():
+                        actions = policy(obs)
+                        obs, _, _, _ = env.step(actions)
+            
+            step += 1
+
+    # Print final metrics
+    print(f"Final Mean Reward: {np.mean(episode_rewards)}")
+    print(f"Final Mean Episode Length: {np.mean(episode_lengths)}")
 
     # close the simulator
     env.close()

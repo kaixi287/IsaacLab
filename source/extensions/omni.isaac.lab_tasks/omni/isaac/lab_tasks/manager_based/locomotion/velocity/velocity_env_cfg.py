@@ -217,6 +217,15 @@ class EventCfg:
         params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)}},
     )
 
+    disable_joint = EventTerm(
+        func=mdp.disable_joint,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+            "joint_to_disable": [0, 1, 2, 4, 5, 6, 8, 9, 10],  # Index of joint to disable
+        },
+    )
+
 
 @configclass
 class RewardsCfg:

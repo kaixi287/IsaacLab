@@ -25,6 +25,9 @@ import omni.isaac.lab.utils.math as math_utils
 import omni.isaac.lab.utils.string as string_utils
 from omni.isaac.lab.actuators import ActuatorBase, ActuatorBaseCfg, ImplicitActuator
 
+from omni.isaac.lab.markers import VisualizationMarkers
+from omni.isaac.lab.markers.config import JOINT_MARKER_CFG
+
 from ..rigid_object import RigidObject
 from .articulation_data import ArticulationData
 
@@ -98,6 +101,20 @@ class Articulation(RigidObject):
         # data for storing actuator group
         self.actuators: dict[str, ActuatorBase] = dict.fromkeys(self.cfg.actuators.keys())
 
+        self.all_disabled_joints = None
+        
+        # add handle for debug visualization (this is set to a valid handle inside set_debug_vis)
+        self._debug_vis_handle = None
+        
+        # set initial state of debug visualization
+        self.set_debug_vis(debug_vis=True)
+
+    def __del__(self):
+        """Unsubscribe from the callbacks."""
+        if self._debug_vis_handle:
+            self._debug_vis_handle.unsubscribe()
+            self._debug_vis_handle = None
+
     """
     Properties
     """
@@ -163,6 +180,58 @@ class Articulation(RigidObject):
         warnings.warn(dep_msg, DeprecationWarning)
         carb.log_error(dep_msg)
         return self._body_physx_view
+    
+    """
+    Visualization
+    """
+
+    def update_disabled_joints(self, env_ids: torch.Tensor, joint_to_disable: torch.Tensor):
+        """Update the visibility of joint markers for a specific environment.
+
+        Args:
+            env_ids (torch.Tensor): Tensor of environment indices, expected shape (num_envs,).
+            joint_to_disable (torch.Tensor): Tensor of joint IDs to disable for env_ids, expected shape (num_envs, num_joints_to_disable).
+        """
+        if self.all_disabled_joints is None:
+            # Initialize all_disabled_joints tensor if it doesn't exist
+            self.all_disabled_joints = torch.full((len(env_ids),), -1, dtype=torch.int, device=joint_to_disable.device)
+        
+        # Update the joint IDs for the specified environments
+        self.all_disabled_joints[env_ids] = joint_to_disable
+    
+    def _set_debug_vis_impl(self, debug_vis: bool):
+        # create markers if necessary
+        if debug_vis:
+            if not hasattr(self, "joint_marker"):
+                marker_cfg = JOINT_MARKER_CFG.copy()
+                marker_cfg.prim_path = "/Visuals/Joints"
+                self.joint_marker = VisualizationMarkers(marker_cfg)
+            # set their visibility to true
+            self.joint_marker.set_visibility(True)
+        else:
+            if hasattr(self, "joint_marker"):
+                self.joint_marker.set_visibility(False)
+
+    def _debug_vis_callback(self, event):
+        # Check if the articulation is valid
+        # if self.root_physx_view is None:
+        #     return                                                                                                                      
+        
+        # Check if there are environments and joints to process
+        if self.all_disabled_joints is not None and self.all_disabled_joints.numel() > 0:
+            # Get the child link ids corresponding to the disabled joints
+            link_ids = self.all_disabled_joints + 1
+
+            # Get disabled joint positions
+            link_transforms = self.root_physx_view.get_link_transforms()
+            disabled_joint_pos = link_transforms[torch.arange(link_ids.shape[0]), link_ids, :3]
+
+            # (num_envs, num_joints_to_disable, 3) --> (num_envs * num_joints_to_disable, 3)
+            disabled_joint_pos = disabled_joint_pos.view(-1, 3)
+        else:
+            disabled_joint_pos = None
+
+        self.joint_marker.visualize(disabled_joint_pos)     
 
     """
     Operations.
@@ -1083,6 +1152,7 @@ class Articulation(RigidObject):
                 control_action,
                 joint_pos=self._data.joint_pos[:, actuator.joint_indices],
                 joint_vel=self._data.joint_vel[:, actuator.joint_indices],
+                disabled_joint_ids = self.all_disabled_joints
             )
             # update targets (these are set into the simulation)
             if control_action.joint_positions is not None:

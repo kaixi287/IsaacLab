@@ -30,6 +30,64 @@ from omni.isaac.lab.terrains import TerrainImporter
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedEnv
 
+def disable_joint(
+    env: ManagerBasedEnv,
+    env_ids: torch.Tensor | None,
+    asset_cfg: SceneEntityCfg,
+    joint_to_disable: int | list | None = None,
+):
+    """Disable a specified joint or a random joint of the asset by setting the joint damping to a very high value.
+
+    This function disables a specified joint or a random joint if joint_to_disable is -1.
+    If joint_to_disable is None, no joints will be disabled. If joint_to_disable is a list,
+    an index will be sampled from the list and the corresponding joint will be disabled.
+
+    Args:
+        env (BaseEnv): The environment object.
+        env_ids (torch.Tensor | None): The environment IDs to apply the randomization to.
+        asset_cfg (SceneEntityCfg): Configuration for the asset to modify.
+        joint_to_disable (int | list | None): The index of the joint to disable, a list of indices to sample from, 
+                                              or -1 to disable a random joint, or None to disable no joint.
+
+    .. tip::
+        This function uses CPU tensors to assign the joint properties. It is recommended to use this function
+        only during the initialization of the environment.
+    """
+
+    if joint_to_disable is None:
+        # No joints to disable
+        return
+    
+    # extract the used quantities (to enable type-hinting)
+    asset: Articulation = env.scene[asset_cfg.name]
+
+    if not isinstance(asset, Articulation):
+        raise ValueError(
+            f"Event term 'disable_joint' not supported for asset: '{asset_cfg.name}'"
+            f" with type: '{type(asset)}'."
+        )
+
+    # resolve environment ids
+    if env_ids is None:
+        env_ids = torch.arange(env.scene.num_envs, device=asset.device)
+
+    num_envs = len(env_ids)
+
+    # Determine joints to disable
+    if isinstance(joint_to_disable, list):
+        # Sample from the list of joint indices
+        joint_to_disable = torch.tensor(joint_to_disable, dtype=torch.int, device="cpu")
+        indices = torch.randint(len(joint_to_disable), (num_envs,), dtype=torch.int, device="cpu")
+        joints_to_disable = joint_to_disable[indices].to(asset.device)
+    elif joint_to_disable == -1:
+        # Generate random joint
+        joints_to_disable = torch.randint(asset.num_joints, (num_envs,), dtype=torch.int, device=asset.device)
+    else:
+        joints_to_disable = torch.tensor([joint_to_disable] * len(env_ids), dtype=torch.int, device=asset.device)
+
+    # Update markers to show which joint is blocked
+    asset.update_disabled_joints(env_ids, joints_to_disable)
+
 
 def randomize_rigid_body_material(
     env: ManagerBasedEnv,
