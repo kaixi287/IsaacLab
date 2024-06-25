@@ -45,6 +45,7 @@ cp -r $CLUSTER_ISAAC_SIM_CACHE_DIR $TMPDIR
 mkdir -p "$CLUSTER_ISAACLAB_DIR/logs"
 touch "$CLUSTER_ISAACLAB_DIR/logs/.keep"
 cp -r $CLUSTER_ISAACLAB_DIR $TMPDIR
+cp -r $CLUSTER_RSL_RL_DIR $TMPDIR
 
 # copy container to the compute node
 tar -xf $CLUSTER_SIF_PATH/$1.tar  -C $TMPDIR
@@ -62,6 +63,7 @@ singularity exec \
     -B $TMPDIR/docker-isaac-sim/data:${DOCKER_USER_HOME}/.local/share/ov/data:rw \
     -B $TMPDIR/docker-isaac-sim/documents:${DOCKER_USER_HOME}/Documents:rw \
     -B $TMPDIR/isaaclab:/workspace/isaaclab:rw \
+    -B $TMPDIR/rsl_rl/rsl_rl:/isaac-sim/kit/python/lib/python3.10/site-packages/rsl_rl:rw \
     -B $CLUSTER_ISAACLAB_DIR/logs:/workspace/isaaclab/logs:rw \
     --nv --writable --containall $TMPDIR/$1.sif \
     bash -c "export ISAACLAB_PATH=/workspace/isaaclab && cd /workspace/isaaclab && /isaac-sim/python.sh ${CLUSTER_PYTHON_EXECUTABLE} ${@:2}"
