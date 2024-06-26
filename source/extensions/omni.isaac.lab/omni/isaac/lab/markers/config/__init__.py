@@ -133,4 +133,4 @@ JOINT_MARKER_CFG = VisualizationMarkersCfg(
         ),
     }
 )
-"""Configuration for the disabled joint marker."""
+"""Configuration for the blocked joint marker."""

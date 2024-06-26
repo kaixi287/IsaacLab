@@ -58,7 +58,7 @@ def block_joint(
     """
 
     if joint_to_block is None:
-        # No joints to disable
+        # No joints to block
         return
     
     # extract the used quantities (to enable type-hinting)
@@ -66,7 +66,7 @@ def block_joint(
 
     if not isinstance(asset, Articulation):
         raise ValueError(
-            f"Event term 'disable_joint' not supported for asset: '{asset_cfg.name}'"
+            f"Event term 'block_joint' not supported for asset: '{asset_cfg.name}'"
             f" with type: '{type(asset)}'."
         )
 
@@ -76,13 +76,13 @@ def block_joint(
 
     num_envs = len(env_ids)
 
-    # Determine whether to disable joints based on probability
+    # Determine whether to block joints based on probability
     block_decision = torch.rand(num_envs, device=asset.device) >= prob_no_block
 
-    # Initialize tensor for joints to disable with -1 indicating no joint to disable
+    # Initialize tensor for joints to block with -1 indicating no joint to disable
     joints_to_block = torch.full((num_envs,), -1, dtype=torch.int, device=asset.device)
 
-    # Determine joints to disable
+    # Determine joints to block
     if isinstance(joint_to_block, list):
         # Sample from the list of joint indices
         joint_to_block = torch.tensor(joint_to_block, dtype=torch.int, device="cpu")

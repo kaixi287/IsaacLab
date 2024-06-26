@@ -1147,11 +1147,13 @@ class Articulation(RigidObject):
                 joint_efforts=self._data.joint_effort_target[:, actuator.joint_indices],
                 joint_indices=actuator.joint_indices,
             )
-            # compute joint command from the actuator model
+
+            # get the blocked joint ids
             blocked_joint_ids = None
             if hasattr(self, "all_blocked_joints"):
                 blocked_joint_ids = self.all_blocked_joints
-                
+            
+            # compute joint command from the actuator model
             control_action = actuator.compute(
                 control_action,
                 joint_pos=self._data.joint_pos[:, actuator.joint_indices],
