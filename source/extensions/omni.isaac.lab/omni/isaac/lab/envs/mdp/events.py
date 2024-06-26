@@ -39,10 +39,10 @@ def block_joint(
 ):
     """Block a specified joint or a random joint of the asset by setting the output torque of the joint to zero.
 
-    This function disables a specified joint or a random joint if joint_to_block is -1.
-    If joint_to_block is None, no joints will be disabled. If joint_to_block is a list,
-    an index will be sampled from the list and the corresponding joint will be disabled.
-    With a specified probability, no joints will be disabled.
+    This function blocks a specified joint or a random joint if joint_to_block is -1.
+    If joint_to_block is None, no joints will be blocked. If joint_to_block is a list,
+    an index will be sampled from the list and the corresponding joint will be blocked.
+    With a specified probability, no joints will be blocked.
 
     Args:
         env (BaseEnv): The environment object.
@@ -79,7 +79,7 @@ def block_joint(
     # Determine whether to block joints based on probability
     block_decision = torch.rand(num_envs, device=asset.device) >= prob_no_block
 
-    # Initialize tensor for joints to block with -1 indicating no joint to disable
+    # Initialize tensor for joints to block with -1 indicating no joint to block
     joints_to_block = torch.full((num_envs,), -1, dtype=torch.int, device=asset.device)
 
     # Determine joints to block
