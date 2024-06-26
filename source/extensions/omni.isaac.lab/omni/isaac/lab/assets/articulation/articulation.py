@@ -100,8 +100,6 @@ class Articulation(RigidObject):
         super().__init__(cfg)
         # data for storing actuator group
         self.actuators: dict[str, ActuatorBase] = dict.fromkeys(self.cfg.actuators.keys())
-
-        self.all_disabled_joints = None
         
         # add handle for debug visualization (this is set to a valid handle inside set_debug_vis)
         self._debug_vis_handle = None
@@ -185,19 +183,19 @@ class Articulation(RigidObject):
     Visualization
     """
 
-    def update_disabled_joints(self, env_ids: torch.Tensor, joint_to_disable: torch.Tensor):
+    def update_blocked_joints(self, env_ids: torch.Tensor, joint_to_block: torch.Tensor):
         """Update the visibility of joint markers for a specific environment.
 
         Args:
             env_ids (torch.Tensor): Tensor of environment indices, expected shape (num_envs,).
-            joint_to_disable (torch.Tensor): Tensor of joint IDs to disable for env_ids, expected shape (num_envs, num_joints_to_disable).
+            joint_to_block (torch.Tensor): Tensor of joint IDs to block for env_ids, expected shape (num_envs, num_joints_to_block).
         """
-        if self.all_disabled_joints is None:
-            # Initialize all_disabled_joints tensor if it doesn't exist
-            self.all_disabled_joints = torch.full((len(env_ids),), -1, dtype=torch.int, device=joint_to_disable.device)
+        if not hasattr(self, "all_blocked_joints"):
+            # Initialize all_blocked_joints tensor if it doesn't exist
+            self.all_blocked_joints = torch.full((len(env_ids),), -1, dtype=torch.int, device=joint_to_block.device)
         
         # Update the joint IDs for the specified environments
-        self.all_disabled_joints[env_ids] = joint_to_disable
+        self.all_blocked_joints[env_ids] = joint_to_block
     
     def _set_debug_vis_impl(self, debug_vis: bool):
         # create markers if necessary
@@ -218,20 +216,22 @@ class Articulation(RigidObject):
         #     return                                                                                                                      
         
         # Check if there are environments and joints to process
-        if self.all_disabled_joints is not None and self.all_disabled_joints.numel() > 0:
-            # Get the child link ids corresponding to the disabled joints
-            link_ids = self.all_disabled_joints + 1
+        if hasattr(self, "all_blocked_joints") and self.all_blocked_joints.numel() > 0:
+            # Create a mask to filter out environments where no joint should be blocked
+            block_mask = self.all_blocked_joints != -1
 
-            # Get disabled joint positions
+            # Filter link IDs to only include those that should be blocked
+            link_ids = self.all_blocked_joints[block_mask] + 1
+
+            # Get blocked joint positions only for the environments that should be blocked
             link_transforms = self.root_physx_view.get_link_transforms()
-            disabled_joint_pos = link_transforms[torch.arange(link_ids.shape[0]), link_ids, :3]
-
-            # (num_envs, num_joints_to_disable, 3) --> (num_envs * num_joints_to_disable, 3)
-            disabled_joint_pos = disabled_joint_pos.view(-1, 3)
+            blocked_joint_pos = link_transforms[block_mask.nonzero(as_tuple=False).squeeze(), link_ids, :3]
+            # (num_envs, num_joints_to_block, 3) --> (num_envs * num_joints_to_block, 3)
+            blocked_joint_pos = blocked_joint_pos.view(-1, 3)
         else:
-            disabled_joint_pos = None
+            blocked_joint_pos = None
 
-        self.joint_marker.visualize(disabled_joint_pos)     
+        self.joint_marker.visualize(blocked_joint_pos)     
 
     """
     Operations.
@@ -1148,11 +1148,15 @@ class Articulation(RigidObject):
                 joint_indices=actuator.joint_indices,
             )
             # compute joint command from the actuator model
+            blocked_joint_ids = None
+            if hasattr(self, "all_blocked_joints"):
+                blocked_joint_ids = self.all_blocked_joints
+                
             control_action = actuator.compute(
                 control_action,
                 joint_pos=self._data.joint_pos[:, actuator.joint_indices],
                 joint_vel=self._data.joint_vel[:, actuator.joint_indices],
-                disabled_joint_ids = self.all_disabled_joints
+                blocked_joint_ids = blocked_joint_ids
             )
             # update targets (these are set into the simulation)
             if control_action.joint_positions is not None:

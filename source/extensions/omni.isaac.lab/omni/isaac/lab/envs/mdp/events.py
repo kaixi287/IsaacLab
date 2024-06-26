@@ -30,31 +30,34 @@ from omni.isaac.lab.terrains import TerrainImporter
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedEnv
 
-def disable_joint(
+def block_joint(
     env: ManagerBasedEnv,
     env_ids: torch.Tensor | None,
     asset_cfg: SceneEntityCfg,
-    joint_to_disable: int | list | None = None,
+    joint_to_block: int | list | None = None,
+    prob_no_block: float = 0.2,
 ):
-    """Disable a specified joint or a random joint of the asset by setting the joint damping to a very high value.
+    """Block a specified joint or a random joint of the asset by setting the output torque of the joint to zero.
 
-    This function disables a specified joint or a random joint if joint_to_disable is -1.
-    If joint_to_disable is None, no joints will be disabled. If joint_to_disable is a list,
+    This function disables a specified joint or a random joint if joint_to_block is -1.
+    If joint_to_block is None, no joints will be disabled. If joint_to_block is a list,
     an index will be sampled from the list and the corresponding joint will be disabled.
+    With a specified probability, no joints will be disabled.
 
     Args:
         env (BaseEnv): The environment object.
         env_ids (torch.Tensor | None): The environment IDs to apply the randomization to.
         asset_cfg (SceneEntityCfg): Configuration for the asset to modify.
-        joint_to_disable (int | list | None): The index of the joint to disable, a list of indices to sample from, 
-                                              or -1 to disable a random joint, or None to disable no joint.
+        joint_to_block (int | list | None): The index of the joint to block, a list of indices to sample from, 
+                                              or -1 to block a random joint, or None to block no joint.
+        prob_no_block (float): The probability of not blocking any joints. Should be between 0 and 1.
 
     .. tip::
         This function uses CPU tensors to assign the joint properties. It is recommended to use this function
         only during the initialization of the environment.
     """
 
-    if joint_to_disable is None:
+    if joint_to_block is None:
         # No joints to disable
         return
     
@@ -73,20 +76,30 @@ def disable_joint(
 
     num_envs = len(env_ids)
 
+    # Determine whether to disable joints based on probability
+    block_decision = torch.rand(num_envs, device=asset.device) >= prob_no_block
+
+    # Initialize tensor for joints to disable with -1 indicating no joint to disable
+    joints_to_block = torch.full((num_envs,), -1, dtype=torch.int, device=asset.device)
+
     # Determine joints to disable
-    if isinstance(joint_to_disable, list):
+    if isinstance(joint_to_block, list):
         # Sample from the list of joint indices
-        joint_to_disable = torch.tensor(joint_to_disable, dtype=torch.int, device="cpu")
-        indices = torch.randint(len(joint_to_disable), (num_envs,), dtype=torch.int, device="cpu")
-        joints_to_disable = joint_to_disable[indices].to(asset.device)
-    elif joint_to_disable == -1:
+        joint_to_block = torch.tensor(joint_to_block, dtype=torch.int, device="cpu")
+        indices = torch.randint(len(joint_to_block), (num_envs,), dtype=torch.int, device="cpu")
+        selected_joints = joint_to_block[indices].to(asset.device)
+        joints_to_block[block_decision] = selected_joints[block_decision]
+    elif joint_to_block == -1:
         # Generate random joint
-        joints_to_disable = torch.randint(asset.num_joints, (num_envs,), dtype=torch.int, device=asset.device)
+        random_joints = torch.randint(asset.num_joints, (num_envs,), dtype=torch.int, device=asset.device)
+        joints_to_block[block_decision] = random_joints[block_decision]
     else:
-        joints_to_disable = torch.tensor([joint_to_disable] * len(env_ids), dtype=torch.int, device=asset.device)
+        selected_joint = torch.tensor([joint_to_block] * num_envs, dtype=torch.int, device=asset.device)
+        joints_to_block[block_decision] = selected_joint[block_decision]
 
     # Update markers to show which joint is blocked
-    asset.update_disabled_joints(env_ids, joints_to_disable)
+    asset.update_blocked_joints(env_ids, joints_to_block)
+
 
 
 def randomize_rigid_body_material(
