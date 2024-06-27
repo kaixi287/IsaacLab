@@ -17,7 +17,7 @@ import cli_args  # isort: skip
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Train an RL agent with RSL-RL.")
 parser.add_argument("--video", action="store_true", default=True, help="Record videos during evaluation.")
-parser.add_argument("--video_length", type=int, default=200, help="Length of the recorded video (in steps).")
+parser.add_argument("--video_length", type=int, default=1000, help="Length of the recorded video (in steps).")
 parser.add_argument("--video_interval", type=int, default=50, help="Interval between video recordings (in steps).")
 parser.add_argument("--cpu", action="store_true", default=False, help="Use CPU pipeline.")
 parser.add_argument(
@@ -66,8 +66,10 @@ def main():
     # specify directory for logging experiments
     log_root_path = os.path.join("logs", "rsl_rl", agent_cfg.experiment_name)
     log_root_path = os.path.abspath(log_root_path)
+    # log_root_path = "/home/kaixi/anymal_ws/cluster_logs/rsl_rl/anymal_d_flat/joint_failures/rnn_same_type_blockage_0.2_no_block"
     print(f"[INFO] Loading experiment from directory: {log_root_path}")
     resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
+    # resume_path = "/home/kaixi/anymal_ws/cluster_logs/rsl_rl/anymal_d_flat/joint_failures/rnn_same_type_blockage_0.2_no_block/model_14999.pt"
     print(f"[INFO]: Loading model checkpoint from: {resume_path}")
 
     # create isaac environment
@@ -135,7 +137,7 @@ def main():
                 print(f"Num Episodes: {num_episodes}, Mean Reward: {np.mean(episode_rewards)}, Mean Length: {np.mean(episode_lengths)}")
                 
                 # Exit after a fixed number of episodes for evaluation
-                if num_episodes >= 100:
+                if num_episodes >= 100000:
                     break
 
             # Record video at specified intervals
