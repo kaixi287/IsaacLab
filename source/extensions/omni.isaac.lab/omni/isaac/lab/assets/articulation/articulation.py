@@ -216,22 +216,20 @@ class Articulation(RigidObject):
         #     return                                                                                                                      
         
         # Check if there are environments and joints to process
-        if hasattr(self, "all_blocked_joints") and self.all_blocked_joints.numel() > 0:
+        if hasattr(self, "all_blocked_joints"):
             # Create a mask to filter out environments where no joint should be blocked
             block_mask = self.all_blocked_joints != -1
 
-            # Filter link IDs to only include those that should be blocked
-            link_ids = self.all_blocked_joints[block_mask] + 1
+            if torch.any(block_mask):
+                # Filter link IDs to only include those that should be blocked
+                link_ids = self.all_blocked_joints[block_mask] + 1
 
-            # Get blocked joint positions only for the environments that should be blocked
-            link_transforms = self.root_physx_view.get_link_transforms()
-            blocked_joint_pos = link_transforms[block_mask.nonzero(as_tuple=False).squeeze(), link_ids, :3]
-            # (num_envs, num_joints_to_block, 3) --> (num_envs * num_joints_to_block, 3)
-            blocked_joint_pos = blocked_joint_pos.view(-1, 3)
-        else:
-            blocked_joint_pos = None
-
-        self.joint_marker.visualize(blocked_joint_pos)     
+                # Get blocked joint positions only for the environments that should be blocked
+                link_transforms = self.root_physx_view.get_link_transforms()
+                blocked_joint_pos = link_transforms[block_mask.nonzero(as_tuple=False).squeeze(), link_ids, :3]
+                # (num_envs, num_joints_to_block, 3) --> (num_envs * num_joints_to_block, 3)
+                blocked_joint_pos = blocked_joint_pos.view(-1, 3)
+                self.joint_marker.visualize(blocked_joint_pos)      
 
     """
     Operations.
