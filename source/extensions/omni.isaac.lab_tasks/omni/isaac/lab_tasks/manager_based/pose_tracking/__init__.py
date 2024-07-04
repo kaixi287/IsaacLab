@@ -3,6 +3,6 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Navigation environments."""
+"""Position tracking environments."""
 
 from .config import anymal_d

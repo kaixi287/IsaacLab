@@ -103,6 +103,13 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
     def max_episode_length(self) -> int:
         """Maximum episode length in environment steps."""
         return math.ceil(self.max_episode_length_s / self.step_dt)
+    
+    @property
+    def elapsed_time(self) -> float:
+        """Get the current time in seconds since the start of the episode."""
+        if not hasattr(self, "episode_length_buf"):
+            self.episode_length_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
+        return self.episode_length_buf * self.step_dt
 
     """
     Operations - Setup.
@@ -340,3 +347,8 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
         # reset the episode length buffer
         self.episode_length_buf[env_ids] = 0
+    
+    def _get_remaining_time(self) -> torch.Tensor:
+        """Calculate the remaining time to reach the target location."""
+        remaining_time = self.cfg.episode_length_s - self.elapsed_time
+        return remaining_time.unsqueeze(1)  # Ensure it has the correct shape

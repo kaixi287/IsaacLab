@@ -207,3 +207,7 @@ Commands.
 def generated_commands(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
     """The generated command from command term in the command manager with the given name."""
     return env.command_manager.get_command(command_name)
+
+def get_remaining_time(env: ManagerBasedRLEnv) -> torch.Tensor:
+    """The remaining time in the episode."""
+    return env._get_remaining_time()

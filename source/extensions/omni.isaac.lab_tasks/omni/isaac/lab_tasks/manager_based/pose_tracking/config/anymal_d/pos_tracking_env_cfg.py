@@ -35,57 +35,6 @@ from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: sk
 
 
 ##
-# Scene definition
-##
-
-
-@configclass
-class MySceneCfg(InteractiveSceneCfg):
-    """Configuration for the terrain scene with a legged robot."""
-
-    # ground terrain
-    terrain = TerrainImporterCfg(
-        prim_path="/World/ground",
-        terrain_type="generator",
-        terrain_generator=ROUGH_TERRAINS_CFG,
-        max_init_terrain_level=5,
-        collision_group=-1,
-        physics_material=sim_utils.RigidBodyMaterialCfg(
-            friction_combine_mode="multiply",
-            restitution_combine_mode="multiply",
-            static_friction=1.0,
-            dynamic_friction=1.0,
-        ),
-        visual_material=sim_utils.MdlFileCfg(
-            mdl_path=f"{ISAACLAB_NUCLEUS_DIR}/Materials/TilesMarbleSpiderWhiteBrickBondHoned/TilesMarbleSpiderWhiteBrickBondHoned.mdl",
-            project_uvw=True,
-            texture_scale=(0.25, 0.25),
-        ),
-        debug_vis=False,
-    )
-    # robots
-    robot: ArticulationCfg = MISSING
-    # sensors
-    height_scanner = RayCasterCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/base",
-        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
-        attach_yaw_only=True,
-        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
-        debug_vis=False,
-        mesh_prim_paths=["/World/ground"],
-    )
-    contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
-    # lights
-    sky_light = AssetBaseCfg(
-        prim_path="/World/skyLight",
-        spawn=sim_utils.DomeLightCfg(
-            intensity=750.0,
-            texture_file=f"{ISAAC_NUCLEUS_DIR}/Materials/Textures/Skies/PolyHaven/kloofendal_43d_clear_puresky_4k.hdr",
-        ),
-    )
-
-
-##
 # MDP settings
 ##
 
@@ -97,7 +46,7 @@ class CommandsCfg:
     pose_command = mdp.UniformPose2dCommandCfg(
         asset_name="robot",
         simple_heading=False,
-        resampling_time_range=(8.0, 8.0),
+        resampling_time_range=(6.0, 6.0),
         debug_vis=True,
         ranges=mdp.UniformPose2dCommandCfg.Ranges(pos_x=(-3.0, 3.0), pos_y=(-3.0, 3.0), heading=(-math.pi, math.pi)),
     )
@@ -135,6 +84,7 @@ class ObservationsCfg:
             noise=Unoise(n_min=-0.1, n_max=0.1),
             clip=(-1.0, 1.0),
         )
+        remaining_time = ObsTerm(func=mdp.get_remaining_time)
 
         def __post_init__(self):
             self.enable_corruption = True
@@ -220,63 +170,58 @@ class EventCfg:
         mode="reset",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "joint_to_block": [3, 7, 11], # Index of joint to disable
-            "prob_no_block": 0.0,
+            "joint_to_block": -1, # Index of joint to disable
+            "prob_no_block": 0.2,
         },
     )
 
-# TODO: adjust reward terms for position tracking
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
 
-    # # -- task
-    # track_lin_vel_xy_exp = RewTerm(
-    #     func=mdp.track_lin_vel_xy_exp, weight=1.0, params={"command_name": "base_velocity", "std": math.sqrt(0.25)}
-    # )
-    # track_ang_vel_z_exp = RewTerm(
-    #     func=mdp.track_ang_vel_z_exp, weight=0.5, params={"command_name": "base_velocity", "std": math.sqrt(0.25)}
-    # )
+    # -- task
+    position_tracking = RewTerm(
+        func=mdp.position_tracking,
+        weight=2.0,
+        params={"Tr": 2.0, "T": 12.0, "command_name": "pose_command"},
+    )
     # # -- penalties
-    # lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
-    # ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
-    # dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-1.0e-5)
-    # dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
-    # action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
-    # feet_air_time = RewTerm(
-    #     func=mdp.feet_air_time,
-    #     weight=0.125,
-    #     params={
-    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*FOOT"),
-    #         "command_name": "base_velocity",
-    #         "threshold": 0.5,
-    #     },
-    # )
-    # undesired_contacts = RewTerm(
-    #     func=mdp.undesired_contacts,
-    #     weight=-1.0,
-    #     params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*THIGH"), "threshold": 1.0},
-    # )
+    lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
+    ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
+    dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-1.0e-5)
+    dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
+    action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
+    undesired_contacts = RewTerm(
+        func=mdp.undesired_contacts,
+        weight=-1.0,
+        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*THIGH"), "threshold": 1.0},
+    )
     # # -- optional penalties
     # flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=0.0)
     # dof_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=0.0)
 
+    # -- exploration
+    exploration = RewTerm(func=mdp.exploration_reward, weight=1.0, params={"command_name": "pose_command"})
+
+    # -- stalling policy penalty
+    stalling_penalty = RewTerm(func=mdp.stalling_penalty, weight=1.0, params={"command_name": "pose_command"})
+
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-400.0)
-    position_tracking = RewTerm(
-        func=mdp.position_command_error_tanh,
-        weight=0.5,
-        params={"std": 2.0, "command_name": "pose_command"},
-    )
-    position_tracking_fine_grained = RewTerm(
-        func=mdp.position_command_error_tanh,
-        weight=0.5,
-        params={"std": 0.2, "command_name": "pose_command"},
-    )
-    orientation_tracking = RewTerm(
-        func=mdp.heading_command_error_abs,
-        weight=-0.2,
-        params={"command_name": "pose_command"},
-    )
+    # position_tracking = RewTerm(
+    #     func=mdp.position_command_error_tanh,
+    #     weight=0.5,
+    #     params={"std": 2.0, "command_name": "pose_command"},
+    # )
+    # position_tracking_fine_grained = RewTerm(
+    #     func=mdp.position_command_error_tanh,
+    #     weight=0.5,
+    #     params={"std": 0.2, "command_name": "pose_command"},
+    # )
+    # orientation_tracking = RewTerm(
+    #     func=mdp.heading_command_error_abs,
+    #     weight=-0.2,
+    #     params={"command_name": "pose_command"},
+    # )
 
 
 @configclass
@@ -294,7 +239,7 @@ class TerminationsCfg:
 class CurriculumCfg:
     """Curriculum terms for the MDP."""
 
-    terrain_levels = CurrTerm(func=mdp.terrain_levels_vel)
+    pass
 
 
 ##
@@ -307,7 +252,7 @@ class PosTrackingEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the locomotion velocity-tracking environment."""
 
     # Scene settings
-    scene: MySceneCfg = MySceneCfg(num_envs=4096, env_spacing=2.5)
+    scene: SceneEntityCfg = LOW_LEVEL_ENV_CFG.scene
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
@@ -321,17 +266,19 @@ class PosTrackingEnvCfg(ManagerBasedRLEnvCfg):
     def __post_init__(self):
         """Post initialization."""
         # general settings
-        self.decimation = LOW_LEVEL_ENV_CFG.decimation * 10
+        self.decimation = LOW_LEVEL_ENV_CFG.decimation
         self.episode_length_s = self.commands.pose_command.resampling_time_range[1]
         # simulation settings
         self.sim.dt = LOW_LEVEL_ENV_CFG.sim.dt
-        self.sim.render_interval = LOW_LEVEL_ENV_CFG.decimation
+        self.sim.render_interval = LOW_LEVEL_ENV_CFG.decimation * 10
         self.sim.disable_contact_processing = True
         self.sim.physics_material = self.scene.terrain.physics_material
         # update sensor update periods
         # we tick all the sensors based on the smallest update period (physics update period)
         if self.scene.height_scanner is not None:
             self.scene.height_scanner.update_period = self.decimation * self.sim.dt
+        else:
+            self.observations.policy.height_scan = None
         if self.scene.contact_forces is not None:
             self.scene.contact_forces.update_period = self.sim.dt
 
