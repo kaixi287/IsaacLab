@@ -14,6 +14,8 @@ from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.managers.manager_base import ManagerTermBase
 from omni.isaac.lab.managers.manager_term_cfg import RewardTermCfg
 from omni.isaac.lab.sensors import ContactSensor
+import omni.isaac.lab.utils.math as math_utils
+
 
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedRLEnv
@@ -22,14 +24,28 @@ if TYPE_CHECKING:
 def position_tracking(env: ManagerBasedRLEnv, Tr: float, T: float, command_name: str) -> torch.Tensor:
     """Reward for reaching the target location."""
     command = env.command_manager.get_command(command_name)
-    des_pos_b = command[:, :3]
-    distance = torch.norm(des_pos_b, dim=1)
+    distance = torch.norm(command[:, :3], dim=1)
     t = env.elapsed_time  # Assuming the environment provides this
     
     reward = torch.where(
         t > T - Tr,
         1 / Tr * 1 / (1 + distance ** 2),
         torch.zeros_like(distance)
+    )
+    return reward
+
+def heading_tracking(env: ManagerBasedRLEnv, Tr: float, T: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+    """Reward for maintaining the desired heading."""
+    command = env.command_manager.get_command(command_name)
+    asset: RigidObject = env.scene[asset_cfg.name]
+    
+    heading_error = math_utils.wrap_to_pi(command[:, 3] - asset.data.heading_w).abs()
+    t = env.elapsed_time  # Assuming the environment provides this
+
+    reward = torch.where(
+        t > T - Tr,
+        1 / Tr * 1 / (1 + heading_error ** 2),
+        torch.zeros_like(heading_error)
     )
     return reward
 

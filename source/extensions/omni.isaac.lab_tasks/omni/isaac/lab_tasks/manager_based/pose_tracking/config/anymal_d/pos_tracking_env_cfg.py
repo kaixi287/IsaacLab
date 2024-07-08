@@ -182,8 +182,13 @@ class RewardsCfg:
     # -- task
     position_tracking = RewTerm(
         func=mdp.position_tracking,
-        weight=2.0,
-        params={"Tr": 2.0, "T": 12.0, "command_name": "pose_command"},
+        weight=1.0,
+        params={"Tr": 1.0, "T": 6.0, "command_name": "pose_command"},
+    )
+    heading_tracking = RewTerm(
+        func=mdp.heading_tracking,
+        weight=1.0,
+        params={"Tr": 1.0, "T": 6.0, "command_name": "pose_command"},
     )
     # # -- penalties
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
