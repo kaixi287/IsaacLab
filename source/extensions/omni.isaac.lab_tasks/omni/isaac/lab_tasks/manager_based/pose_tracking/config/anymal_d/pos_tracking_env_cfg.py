@@ -187,7 +187,7 @@ class RewardsCfg:
     )
     heading_tracking = RewTerm(
         func=mdp.heading_tracking,
-        weight=1.0,
+        weight=-0.1,
         params={"Tr": 1.0, "T": 6.0, "command_name": "pose_command"},
     )
     # # -- penalties

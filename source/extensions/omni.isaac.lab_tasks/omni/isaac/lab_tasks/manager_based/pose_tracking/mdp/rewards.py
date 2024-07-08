@@ -44,7 +44,7 @@ def heading_tracking(env: ManagerBasedRLEnv, Tr: float, T: float, command_name: 
 
     reward = torch.where(
         t > T - Tr,
-        1 / Tr * 1 / (1 + heading_error ** 2),
+        heading_error / Tr,
         torch.zeros_like(heading_error)
     )
     return reward
