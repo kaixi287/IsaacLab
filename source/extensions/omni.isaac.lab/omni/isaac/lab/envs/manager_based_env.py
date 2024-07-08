@@ -12,13 +12,13 @@ from typing import Any
 import carb
 import omni.isaac.core.utils.torch as torch_utils
 
-from omni.isaac.lab.envs.types import VecEnvObs
 from omni.isaac.lab.managers import ActionManager, EventManager, ObservationManager
 from omni.isaac.lab.scene import InteractiveScene
 from omni.isaac.lab.sim import SimulationContext
 from omni.isaac.lab.utils.timer import Timer
 
-from .base_env_cfg import ManagerBasedEnvCfg
+from .common import VecEnvObs
+from .manager_based_env_cfg import ManagerBasedEnvCfg
 from .ui import ViewportCameraController
 
 
@@ -81,7 +81,11 @@ class ManagerBasedEnv:
             # since it gets confused with Isaac Sim's SimulationContext class
             self.sim: SimulationContext = SimulationContext(self.cfg.sim)
         else:
-            raise RuntimeError("Simulation context already exists. Cannot create a new one.")
+            # simulation context should only be created before the environment
+            # when in extension mode
+            if not builtins.ISAAC_LAUNCHED_FROM_TERMINAL:
+                raise RuntimeError("Simulation context already exists. Cannot create a new one.")
+            self.sim: SimulationContext = SimulationContext.instance()
 
         # print useful information
         print("[INFO]: Base environment:")
@@ -251,7 +255,7 @@ class ManagerBasedEnv:
         The environment steps forward at a fixed time-step, while the physics simulation is
         decimated at a lower time-step. This is to ensure that the simulation is stable. These two
         time-steps can be configured independently using the :attr:`ManagerBasedEnvCfg.decimation` (number of
-        simulation steps per environment step) and the :attr:`ManagerBasedEnvCfg.physics_dt` (physics time-step).
+        simulation steps per environment step) and the :attr:`ManagerBasedEnvCfg.sim.dt` (physics time-step).
         Based on these parameters, the environment time-step is computed as the product of the two.
 
         Args:
@@ -262,6 +266,11 @@ class ManagerBasedEnv:
         """
         # process actions
         self.action_manager.process_action(action)
+
+        # check if we need to do rendering within the physics loop
+        # note: checked here once to avoid multiple checks within the loop
+        is_rendering = self.sim.has_gui() or self.sim.has_rtx_sensors()
+
         # perform physics stepping
         for _ in range(self.cfg.decimation):
             self._sim_step_counter += 1
@@ -269,11 +278,13 @@ class ManagerBasedEnv:
             self.action_manager.apply_action()
             # set actions into simulator
             self.scene.write_data_to_sim()
-            render = self._sim_step_counter % self.cfg.sim.render_interval == 0 and (
-                self.sim.has_gui() or self.sim.has_rtx_sensors()
-            )
             # simulate
-            self.sim.step(render=render)
+            self.sim.step(render=False)
+            # render between steps only if the GUI or an RTX sensor needs it
+            # note: we assume the render interval to be the shortest accepted rendering interval.
+            #    If a camera needs rendering at a faster frequency, this will lead to unexpected behavior.
+            if self._sim_step_counter % self.cfg.sim.render_interval == 0 and is_rendering:
+                self.sim.render()
             # update buffers at sim dt
             self.scene.update(dt=self.physics_dt)
 
@@ -308,11 +319,11 @@ class ManagerBasedEnv:
         """Cleanup for the environment."""
         if not self._is_closed:
             # destructor is order-sensitive
+            del self.viewport_camera_controller
             del self.action_manager
             del self.observation_manager
             del self.event_manager
             del self.scene
-            del self.viewport_camera_controller
             # clear callbacks and instance
             self.sim.clear_all_callbacks()
             self.sim.clear_instance()
