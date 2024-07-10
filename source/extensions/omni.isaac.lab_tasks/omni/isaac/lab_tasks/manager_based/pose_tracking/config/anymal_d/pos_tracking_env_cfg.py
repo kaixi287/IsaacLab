@@ -24,6 +24,7 @@ from omni.isaac.lab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
 from omni.isaac.lab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 
 import omni.isaac.lab_tasks.manager_based.pose_tracking.mdp as mdp
+import omni.isaac.lab_tasks.manager_based.navigation.mdp as mdp_nav
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.anymal_d.flat_env_cfg import AnymalDFlatEnvCfg
 
 LOW_LEVEL_ENV_CFG = AnymalDFlatEnvCfg()
@@ -48,7 +49,9 @@ class CommandsCfg:
         simple_heading=False,
         resampling_time_range=(6.0, 6.0),
         debug_vis=True,
+        polar_sampling=True,
         ranges=mdp.UniformPose2dCommandCfg.Ranges(pos_x=(-3.0, 3.0), pos_y=(-3.0, 3.0), heading=(-math.pi, math.pi)),
+        polar_ranges=mdp.UniformPose2dCommandCfg.PolarRanges(radius=(1.0, 5.0), theta=(-math.pi, math.pi), heading=(-math.pi, math.pi)),
     )
 
 
@@ -57,6 +60,13 @@ class ActionsCfg:
     """Action specifications for the MDP."""
 
     joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True)
+    # pre_trained_policy_action: mdp_nav.PreTrainedPolicyActionCfg = mdp_nav.PreTrainedPolicyActionCfg(
+    #     asset_name="robot",
+    #     policy_path=f"{ISAACLAB_NUCLEUS_DIR}/Policies/ANYmal-C/Blind/policy.pt",
+    #     low_level_decimation=4,
+    #     low_level_actions=LOW_LEVEL_ENV_CFG.actions.joint_pos,
+    #     low_level_observations=LOW_LEVEL_ENV_CFG.observations.policy,
+    # )
 
 
 @configclass
@@ -122,16 +132,6 @@ class EventCfg:
     )
 
     # reset
-    base_external_force_torque = EventTerm(
-        func=mdp.apply_external_force_torque,
-        mode="reset",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "force_range": (0.0, 0.0),
-            "torque_range": (-0.0, 0.0),
-        },
-    )
-
     reset_base = EventTerm(
         func=mdp.reset_root_state_uniform,
         mode="reset",
@@ -157,42 +157,34 @@ class EventCfg:
         },
     )
 
-    # interval
-    push_robot = EventTerm(
-        func=mdp.push_by_setting_velocity,
-        mode="interval",
-        interval_range_s=(10.0, 15.0),
-        params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)}},
-    )
-
-    block_joint = EventTerm(
-        func=mdp.block_joint,
-        mode="reset",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "joint_to_block": -1, # Index of joint to disable
-            "prob_no_block": 0.2,
-        },
-    )
+    # block_joint = EventTerm(
+    #     func=mdp.block_joint,
+    #     mode="reset",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+    #         "joint_to_block": -1, # Index of joint to disable
+    #         "prob_no_block": 0.2,
+    #     },
+    # )
 
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
 
     # -- task
-    position_tracking = RewTerm(
-        func=mdp.position_tracking,
+    final_position_reward = RewTerm(
+        func=mdp.final_position_reward,
         weight=1.0,
         params={"Tr": 1.0, "T": 6.0, "command_name": "pose_command"},
     )
-    heading_tracking = RewTerm(
-        func=mdp.heading_tracking,
+    final_heading_reward = RewTerm(
+        func=mdp.final_heading_reward,
         weight=-0.1,
         params={"Tr": 1.0, "T": 6.0, "command_name": "pose_command"},
     )
     # # -- penalties
-    lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
-    ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
+    # lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
+    # ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
     dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-1.0e-5)
     dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
     action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
@@ -202,7 +194,7 @@ class RewardsCfg:
         params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*THIGH"), "threshold": 1.0},
     )
     # # -- optional penalties
-    # flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=0.0)
+    flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=0.0)
     # dof_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=0.0)
 
     # -- exploration

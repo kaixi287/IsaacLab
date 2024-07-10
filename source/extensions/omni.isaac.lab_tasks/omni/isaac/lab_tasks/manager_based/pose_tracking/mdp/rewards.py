@@ -21,11 +21,11 @@ if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedRLEnv
 
 
-def position_tracking(env: ManagerBasedRLEnv, Tr: float, T: float, command_name: str) -> torch.Tensor:
+def final_position_reward(env: ManagerBasedRLEnv, Tr: float, T: float, command_name: str) -> torch.Tensor:
     """Reward for reaching the target location."""
     command = env.command_manager.get_command(command_name)
-    distance = torch.norm(command[:, :3], dim=1)
-    t = env.elapsed_time  # Assuming the environment provides this
+    distance = torch.norm(command[:, :2], dim=1)
+    t = env.elapsed_time
     
     reward = torch.where(
         t > T - Tr,
@@ -34,13 +34,11 @@ def position_tracking(env: ManagerBasedRLEnv, Tr: float, T: float, command_name:
     )
     return reward
 
-def heading_tracking(env: ManagerBasedRLEnv, Tr: float, T: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+def final_heading_reward(env: ManagerBasedRLEnv, Tr: float, T: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """Reward for maintaining the desired heading."""
     command = env.command_manager.get_command(command_name)
-    asset: RigidObject = env.scene[asset_cfg.name]
-    
-    heading_error = math_utils.wrap_to_pi(command[:, 3] - asset.data.heading_w).abs()
-    t = env.elapsed_time  # Assuming the environment provides this
+    heading_error = command[:, 3].abs()
+    t = env.elapsed_time
 
     reward = torch.where(
         t > T - Tr,
@@ -184,12 +182,12 @@ def contact_forces(env: ManagerBasedRLEnv, threshold: float, sensor_cfg: SceneEn
 def exploration_reward(env, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"), epsilon: float = 1e-8) -> torch.Tensor:
     """Encourage exploration towards the target."""
     command = env.command_manager.get_command(command_name)
-    des_pos_b = command[:, :3]
+    des_pos_b = command[:, :2]
     distance = torch.norm(des_pos_b, dim=1).unsqueeze(1)
     distance += epsilon
 
     asset: RigidObject = env.scene[asset_cfg.name]
-    x_dot_b = asset.data.root_lin_vel_b
+    x_dot_b = asset.data.root_lin_vel_b[:, :2]
 
     direction = des_pos_b / distance
     reward = (x_dot_b * direction).sum(dim=1) / torch.norm(x_dot_b, dim=1)
@@ -200,11 +198,11 @@ def exploration_reward(env, command_name: str, asset_cfg: SceneEntityCfg = Scene
 def stalling_penalty(env, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """Penalize stalling."""
     command = env.command_manager.get_command(command_name)
-    des_pos_b = command[:, :3]
+    des_pos_b = command[:, :2]
     distance = torch.norm(des_pos_b, dim=1)
 
     asset: RigidObject = env.scene[asset_cfg.name]
-    x_dot_b = asset.data.root_lin_vel_b
+    x_dot_b = asset.data.root_lin_vel_b[:, :2]
 
     penalty = torch.where(
         (torch.norm(x_dot_b, dim=1) < 0.1) & (distance > 0.5),
