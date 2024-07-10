@@ -88,10 +88,25 @@ class UniformPose2dCommand(CommandTerm):
     def _resample_command(self, env_ids: Sequence[int]):
         # obtain env origins for the environments
         self.pos_command_w[env_ids] = self._env.scene.env_origins[env_ids]
-        # offset the position command by the current root position
-        r = torch.empty(len(env_ids), device=self.device)
-        self.pos_command_w[env_ids, 0] += r.uniform_(*self.cfg.ranges.pos_x)
-        self.pos_command_w[env_ids, 1] += r.uniform_(*self.cfg.ranges.pos_y)
+
+        if self.cfg.polar_sampling:
+            # Sample random radii and angles for polar coordinates
+            r = torch.empty(len(env_ids), device=self.device)
+            theta = torch.empty(len(env_ids), device=self.device)
+
+            radius = r.uniform_(*self.cfg.polar_ranges.radius)
+            angle = theta.uniform_(*self.cfg.polar_ranges.theta)
+
+            # Apply the offsets to the position commands
+            self.pos_command_w[env_ids, 0] += radius * torch.cos(angle)
+            self.pos_command_w[env_ids, 1] += radius * torch.sin(angle)
+        else:
+            # offset the position command by the current root position
+            r = torch.empty(len(env_ids), device=self.device)
+            self.pos_command_w[env_ids, 0] += r.uniform_(*self.cfg.ranges.pos_x)
+            self.pos_command_w[env_ids, 1] += r.uniform_(*self.cfg.ranges.pos_y)
+        
+        # offset the position command by the default root height
         self.pos_command_w[env_ids, 2] += self.robot.data.default_root_state[env_ids, 2]
 
         if self.cfg.simple_heading:

@@ -158,6 +158,26 @@ class UniformPose2dCommandCfg(CommandTermCfg):
     ranges: Ranges = MISSING
     """Distribution ranges for the position commands."""
 
+    @configclass
+    class PolarRanges:
+        """Uniform distribution ranges for the position commands."""
+
+        radius: tuple[float, float] = MISSING
+        """Range for the polar position (in m)."""
+        theta: tuple[float, float] = MISSING
+        """Angle range from which the position commands are sampled (in rad)."""
+        heading: tuple[float, float] = MISSING
+        """Heading range for the position commands (in rad).
+
+        Used only if :attr:`simple_heading` is False.
+        """
+    
+    polar_sampling: bool = False
+    """Whether to sample the position commands in polar coordinates or not."""
+
+    polar_ranges: PolarRanges = MISSING
+    """Distribution ranges for the polar position commands."""
+
 
 @configclass
 class TerrainBasedPose2dCommandCfg(UniformPose2dCommandCfg):
