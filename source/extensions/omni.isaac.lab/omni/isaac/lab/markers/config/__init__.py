@@ -134,3 +134,22 @@ JOINT_MARKER_CFG = VisualizationMarkersCfg(
     }
 )
 """Configuration for the blocked joint marker."""
+
+
+CURR_POSITION_MARKER_CFG = VisualizationMarkersCfg(
+    markers={
+        "curr_position": sim_utils.SphereCfg(
+            radius=0.01,
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 1.0, 0.0)),
+        ),
+    }
+)
+
+TARGET_POSITION_MARKER_CFG = VisualizationMarkersCfg(
+    markers={
+        "target_position": sim_utils.SphereCfg(
+            radius=0.01,
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 0.0, 1.0)),
+        ),
+    }
+)
