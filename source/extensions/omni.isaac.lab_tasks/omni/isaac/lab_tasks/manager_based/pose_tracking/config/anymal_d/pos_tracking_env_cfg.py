@@ -28,6 +28,7 @@ import omni.isaac.lab_tasks.manager_based.navigation.mdp as mdp_nav
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.anymal_d.flat_env_cfg import AnymalDFlatEnvCfg
 
 LOW_LEVEL_ENV_CFG = AnymalDFlatEnvCfg()
+EPISODE_LENGTH_S = 8.0
 
 ##
 # Pre-defined configs
@@ -46,8 +47,8 @@ class CommandsCfg:
 
     pose_command = mdp.UniformPose2dCommandCfg(
         asset_name="robot",
-        simple_heading=False,
-        resampling_time_range=(6.0, 6.0),
+        simple_heading=True,
+        resampling_time_range=(EPISODE_LENGTH_S, EPISODE_LENGTH_S),
         debug_vis=True,
         polar_sampling=True,
         ranges=mdp.UniformPose2dCommandCfg.Ranges(pos_x=(-3.0, 3.0), pos_y=(-3.0, 3.0), heading=(-math.pi, math.pi)),
@@ -157,15 +158,15 @@ class EventCfg:
         },
     )
 
-    # block_joint = EventTerm(
-    #     func=mdp.block_joint,
-    #     mode="reset",
-    #     params={
-    #         "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-    #         "joint_to_block": -1, # Index of joint to disable
-    #         "prob_no_block": 0.2,
-    #     },
-    # )
+    block_joint = EventTerm(
+        func=mdp.block_joint,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+            "joint_to_block": -1, # Index of joint to disable
+            "prob_no_block": 0.2,
+        },
+    )
 
 @configclass
 class RewardsCfg:
@@ -175,16 +176,16 @@ class RewardsCfg:
     final_position_reward = RewTerm(
         func=mdp.final_position_reward,
         weight=1.0,
-        params={"Tr": 1.0, "T": 6.0, "command_name": "pose_command"},
+        params={"Tr": 2.0, "T": EPISODE_LENGTH_S, "command_name": "pose_command"},
     )
-    final_heading_reward = RewTerm(
-        func=mdp.final_heading_reward,
-        weight=-0.1,
-        params={"Tr": 1.0, "T": 6.0, "command_name": "pose_command"},
-    )
+    # final_heading_reward = RewTerm(
+    #     func=mdp.final_heading_reward,
+    #     weight=-0.5,
+    #     params={"Tr": 1.0, "T": 6.0, "command_name": "pose_command"},
+    # )
     # # -- penalties
-    # lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
-    # ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
+    lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
+    ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
     dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-1.0e-5)
     dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
     action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
@@ -194,31 +195,16 @@ class RewardsCfg:
         params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*THIGH"), "threshold": 1.0},
     )
     # # -- optional penalties
-    flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=0.0)
-    # dof_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=0.0)
+    flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=-0.5)
+    dof_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=0.0)
 
     # -- exploration
-    exploration = RewTerm(func=mdp.exploration_reward, weight=1.0, params={"command_name": "pose_command"})
+    exploration = RewTerm(func=mdp.exploration_reward, weight=0.5, params={"command_name": "pose_command"})
 
     # -- stalling policy penalty
     stalling_penalty = RewTerm(func=mdp.stalling_penalty, weight=1.0, params={"command_name": "pose_command"})
 
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-400.0)
-    # position_tracking = RewTerm(
-    #     func=mdp.position_command_error_tanh,
-    #     weight=0.5,
-    #     params={"std": 2.0, "command_name": "pose_command"},
-    # )
-    # position_tracking_fine_grained = RewTerm(
-    #     func=mdp.position_command_error_tanh,
-    #     weight=0.5,
-    #     params={"std": 0.2, "command_name": "pose_command"},
-    # )
-    # orientation_tracking = RewTerm(
-    #     func=mdp.heading_command_error_abs,
-    #     weight=-0.2,
-    #     params={"command_name": "pose_command"},
-    # )
 
 
 @configclass
