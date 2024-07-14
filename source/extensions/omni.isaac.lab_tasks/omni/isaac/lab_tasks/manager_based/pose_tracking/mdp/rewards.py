@@ -183,14 +183,14 @@ def exploration_reward(env, command_name: str, asset_cfg: SceneEntityCfg = Scene
     """Encourage exploration towards the target."""
     command = env.command_manager.get_command(command_name)
     des_pos_b = command[:, :2]
-    distance = torch.norm(des_pos_b, dim=1).unsqueeze(1)
-    distance += epsilon
+    distance = torch.norm(des_pos_b, dim=1).unsqueeze(1) + epsilon
 
     asset: RigidObject = env.scene[asset_cfg.name]
     x_dot_b = asset.data.root_lin_vel_b[:, :2]
 
     direction = des_pos_b / distance
-    reward = (x_dot_b * direction).sum(dim=1) / torch.norm(x_dot_b, dim=1)
+    x_dot_b_norm = torch.norm(x_dot_b, dim=1) + epsilon
+    reward = (x_dot_b * direction).sum(dim=1) / x_dot_b_norm
     return reward
     
 
