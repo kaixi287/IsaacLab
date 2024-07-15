@@ -139,8 +139,8 @@ JOINT_MARKER_CFG = VisualizationMarkersCfg(
 CURR_POSITION_MARKER_CFG = VisualizationMarkersCfg(
     markers={
         "curr_position": sim_utils.SphereCfg(
-            radius=0.01,
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 1.0, 0.0)),
+            radius=0.1,
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 0.0, 1.0)),
         ),
     }
 )
@@ -148,8 +148,8 @@ CURR_POSITION_MARKER_CFG = VisualizationMarkersCfg(
 TARGET_POSITION_MARKER_CFG = VisualizationMarkersCfg(
     markers={
         "target_position": sim_utils.SphereCfg(
-            radius=0.01,
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 0.0, 1.0)),
+            radius=0.1,
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 1.0, 0.0)),
         ),
     }
 )

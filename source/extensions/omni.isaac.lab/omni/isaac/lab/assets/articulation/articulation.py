@@ -224,9 +224,9 @@ class Articulation(RigidObject):
 
     def _debug_vis_callback(self, event):
         # Check if the articulation is valid
-        # if self.root_physx_view is None:
-        #     return                                                                                                                      
-        
+        if not self.is_initialized:
+            return
+
         # Check if there are environments and joints to process
         if hasattr(self, "all_blocked_joints"):
             # Create a mask to filter out environments where no joint should be blocked

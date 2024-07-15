@@ -217,15 +217,15 @@ class EventCfg:
         params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)}},
     )
 
-    block_joint = EventTerm(
-        func=mdp.block_joint,
-        mode="reset",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "joint_to_block": [3, 7, 11], # Index of joint to disable
-            "prob_no_block": 1.0,
-        },
-    )
+    # block_joint = EventTerm(
+    #     func=mdp.block_joint,
+    #     mode="reset",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+    #         "joint_to_block": [3, 7, 11], # Index of joint to disable
+    #         "prob_no_block": 1.0,
+    #     },
+    # )
 
 
 @configclass
@@ -262,6 +262,7 @@ class RewardsCfg:
     # -- optional penalties
     flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=0.0)
     dof_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=0.0)
+    # termination_penalty = RewTerm(func=mdp.is_terminated, weight=-400.0)
 
 
 @configclass

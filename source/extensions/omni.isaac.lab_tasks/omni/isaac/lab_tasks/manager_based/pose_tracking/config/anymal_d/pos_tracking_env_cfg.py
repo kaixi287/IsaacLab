@@ -28,7 +28,8 @@ import omni.isaac.lab_tasks.manager_based.navigation.mdp as mdp_nav
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.anymal_d.flat_env_cfg import AnymalDFlatEnvCfg
 
 LOW_LEVEL_ENV_CFG = AnymalDFlatEnvCfg()
-EPISODE_LENGTH_S = 8.0
+EPISODE_LENGTH_S = 6.0
+T_R = 1.0
 
 ##
 # Pre-defined configs
@@ -47,7 +48,7 @@ class CommandsCfg:
 
     pose_command = mdp.UniformPose2dCommandCfg(
         asset_name="robot",
-        simple_heading=True,
+        simple_heading=False,
         resampling_time_range=(EPISODE_LENGTH_S, EPISODE_LENGTH_S),
         debug_vis=True,
         polar_sampling=True,
@@ -61,13 +62,6 @@ class ActionsCfg:
     """Action specifications for the MDP."""
 
     joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True)
-    # pre_trained_policy_action: mdp_nav.PreTrainedPolicyActionCfg = mdp_nav.PreTrainedPolicyActionCfg(
-    #     asset_name="robot",
-    #     policy_path=f"{ISAACLAB_NUCLEUS_DIR}/Policies/ANYmal-C/Blind/policy.pt",
-    #     low_level_decimation=4,
-    #     low_level_actions=LOW_LEVEL_ENV_CFG.actions.joint_pos,
-    #     low_level_observations=LOW_LEVEL_ENV_CFG.observations.policy,
-    # )
 
 
 @configclass
@@ -176,13 +170,13 @@ class RewardsCfg:
     final_position_reward = RewTerm(
         func=mdp.final_position_reward,
         weight=1.0,
-        params={"Tr": 2.0, "T": EPISODE_LENGTH_S, "command_name": "pose_command"},
+        params={"Tr": T_R, "T": EPISODE_LENGTH_S, "command_name": "pose_command"},
     )
-    # final_heading_reward = RewTerm(
-    #     func=mdp.final_heading_reward,
-    #     weight=-0.5,
-    #     params={"Tr": 1.0, "T": 6.0, "command_name": "pose_command"},
-    # )
+    final_heading_reward = RewTerm(
+        func=mdp.final_heading_reward,
+        weight=-0.5,
+        params={"Tr": T_R, "T": EPISODE_LENGTH_S, "command_name": "pose_command"},
+    )
     # # -- penalties
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
     ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
