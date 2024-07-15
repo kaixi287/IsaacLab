@@ -14,17 +14,21 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
 
 @configclass
 class AnymalDRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    num_steps_per_env = 24
+    num_steps_per_env = 16
     max_iterations = 1500
     save_interval = 1000
     experiment_name = "anymal_d_rough"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
-        class_name="ActorCriticRecurrent",
+        class_name="ActorCriticTransformer",
         init_noise_std=1.0,
         actor_hidden_dims=[512, 256, 128],
         critic_hidden_dims=[512, 256, 128],
         activation="elu",
+        transformer_num_heads=4,
+        transformer_num_layers=1,
+        d_model=192,
+        d_ff=192*2,
     )
     algorithm = RslRlPpoAlgorithmCfg(
         value_loss_coef=1.0,

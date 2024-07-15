@@ -28,6 +28,19 @@ class RslRlPpoActorCriticCfg:
     activation: str = MISSING
     """The activation function for the actor and critic networks."""
 
+    ##
+    # Transformer parameters
+    ##
+
+    transformer_num_heads: int = MISSING
+
+    transformer_num_layers: int = MISSING
+
+    d_model: int = MISSING
+
+    d_ff: int = MISSING
+
+
 
 @configclass
 class RslRlPpoAlgorithmCfg:
