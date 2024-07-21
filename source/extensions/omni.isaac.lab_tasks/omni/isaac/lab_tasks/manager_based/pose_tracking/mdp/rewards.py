@@ -42,7 +42,7 @@ def final_heading_reward(env: ManagerBasedRLEnv, Tr: float, T: float, command_na
 
     reward = torch.where(
         t > T - Tr,
-        heading_error / Tr,
+        -1.0 * heading_error / Tr,
         torch.zeros_like(heading_error)
     )
     return reward
@@ -210,6 +210,34 @@ def stalling_penalty(env, command_name: str, asset_cfg: SceneEntityCfg = SceneEn
         torch.tensor(0.0, device=x_dot_b.device),
     )
     return penalty
+
+# -- time efficiency reward
+def time_efficiency_reward(env: ManagerBasedRLEnv, T: float, command_name: str) -> torch.Tensor:
+    """
+    Reward for reaching the target quickly.
+    """
+    # Get the command representing the target position
+    command = env.command_manager.get_command(command_name)
+    # Calculate the distance to the target
+    distance = torch.norm(command[:, :2], dim=1)
+    # Calculate the heading error
+    heading_error = command[:, 3].abs()
+    
+    # Check if the goal is reached
+    position_reached = distance < 0.1
+    heading_reached = heading_error < 0.1
+
+    # Current time in the episode
+    t = env.elapsed_time
+
+    # Reward based on how quickly the goal is achieved
+    reward = torch.where(
+        position_reached & heading_reached,
+        1.0 - (t / T),
+        torch.zeros_like(t)
+    )
+
+    return reward
 
 # -- pose tracking error with tanh kernel
 def position_command_error_tanh(env: ManagerBasedRLEnv, std: float, command_name: str) -> torch.Tensor:

@@ -140,9 +140,9 @@ class UniformPose2dCommand(CommandTerm):
         # create markers if necessary for the first tome
         if debug_vis:
             if not hasattr(self, "arrow_goal_visualizer"):
-                marker_cfg = TARGET_POSITION_MARKER_CFG.copy()
-                # marker_cfg = GREEN_ARROW_X_MARKER_CFG.copy()
-                # marker_cfg.markers["arrow"].scale = (0.2, 0.2, 0.8)
+                # marker_cfg = TARGET_POSITION_MARKER_CFG.copy()
+                marker_cfg = GREEN_ARROW_X_MARKER_CFG.copy()
+                marker_cfg.markers["arrow"].scale = (0.2, 0.2, 0.8)
                 marker_cfg.prim_path = "/Visuals/Command/pose_goal"
                 self.arrow_goal_visualizer = VisualizationMarkers(marker_cfg)
                 # -- current base pose
