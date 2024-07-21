@@ -26,6 +26,7 @@ parser.add_argument(
 parser.add_argument("--num_envs", type=int, default=None, help="Number of environments to simulate.")
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
+parser.add_argument("--log_root_path", type=str, default=None, help="Relative path of log root directory.")
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
 # append AppLauncher cli args
@@ -63,13 +64,14 @@ def main():
     )
     agent_cfg: RslRlOnPolicyRunnerCfg = cli_args.parse_rsl_rl_cfg(args_cli.task, args_cli)
 
-    # specify directory for logging experiments
-    log_root_path = os.path.join("logs", "rsl_rl", agent_cfg.experiment_name)
+    if args_cli.log_root_path is not None:
+        log_root_path = args_cli.log_root_path
+    else:
+        # specify directory for logging experiments
+        log_root_path = os.path.join("logs", "rsl_rl", agent_cfg.experiment_name)
     log_root_path = os.path.abspath(log_root_path)
-    # log_root_path = "/home/kaixi/anymal_ws/cluster_logs/rsl_rl/anymal_d_flat/joint_failures/rnn_same_type_blockage_0.2_no_block"
     print(f"[INFO] Loading experiment from directory: {log_root_path}")
     resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
-    # resume_path = "/home/kaixi/anymal_ws/cluster_logs/rsl_rl/anymal_d_flat/joint_failures/rnn_same_type_blockage_0.2_no_block/model_14999.pt"
     print(f"[INFO]: Loading model checkpoint from: {resume_path}")
 
     # create isaac environment
