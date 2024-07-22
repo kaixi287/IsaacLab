@@ -28,8 +28,8 @@ import omni.isaac.lab_tasks.manager_based.navigation.mdp as mdp_nav
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.anymal_d.flat_env_cfg import AnymalDFlatEnvCfg
 
 LOW_LEVEL_ENV_CFG = AnymalDFlatEnvCfg()
-EPISODE_LENGTH_S = 6.0
-T_R = 1.0
+EPISODE_LENGTH_S = 8.0
+T_R = 1.5
 
 ##
 # Pre-defined configs
@@ -169,7 +169,7 @@ class RewardsCfg:
     # -- task
     final_position_reward = RewTerm(
         func=mdp.final_position_reward,
-        weight=2.0,
+        weight=1.0,
         params={"Tr": T_R, "T": EPISODE_LENGTH_S, "command_name": "pose_command"},
     )
     final_heading_reward = RewTerm(
@@ -203,7 +203,7 @@ class RewardsCfg:
     # -- reward for time efficiency
     time_efficiency_reward = RewTerm(
         func=mdp.time_efficiency_reward,
-        weight=1.0,
+        weight=2.0,
         params={"T": EPISODE_LENGTH_S, "command_name": "pose_command"}
     )
 

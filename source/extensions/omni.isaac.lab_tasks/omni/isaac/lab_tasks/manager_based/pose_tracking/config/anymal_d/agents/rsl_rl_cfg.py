@@ -15,8 +15,8 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
 @configclass
 class PosTrackingEnvPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 48
-    max_iterations = 4000
-    save_interval = 1000
+    max_iterations = 2000
+    save_interval = 500
     experiment_name = "anymal_d_pos_tracking"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
