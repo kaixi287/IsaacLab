@@ -210,6 +210,9 @@ class Articulation(RigidObject):
         self.all_blocked_joints[env_ids] = joint_to_block
     
     def _set_debug_vis_impl(self, debug_vis: bool):
+        # Do not visualize markers if no blocked joints are specified
+        if not hasattr(self, "all_blocked_joints"):
+            debug_vis = False
         # create markers if necessary
         if debug_vis:
             if not hasattr(self, "joint_marker"):
