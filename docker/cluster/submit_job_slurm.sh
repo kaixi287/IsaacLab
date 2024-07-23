@@ -11,7 +11,7 @@ cat <<EOT > job.sh
 #SBATCH -n 1
 #SBATCH -A es_hutter
 #SBATCH --cpus-per-task=8
-#SBATCH --gpus=1
+#SBATCH --gpus=rtx_4090:1
 #SBATCH --time=23:00:00
 #SBATCH --mem-per-cpu=4048
 #SBATCH --mail-type=END
@@ -20,7 +20,7 @@ cat <<EOT > job.sh
 #SBATCH --output=logs/%j.out
 
 # Pass the container profile first to run_singularity.sh, then all arguments intended for the executed script
-sh "$1/docker/cluster/run_singularity.sh" "$2" "${@:3}"
+bash "$1/docker/cluster/run_singularity.sh" "$2" "${@:3}"
 EOT
 
 sbatch < job.sh
