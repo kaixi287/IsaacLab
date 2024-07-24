@@ -169,11 +169,6 @@ class RewardsCfg:
     # -- task
     final_position_reward = RewTerm(
         func=mdp.final_position_reward,
-        weight=2.0,
-        params={"Tr": T_R, "T": EPISODE_LENGTH_S, "command_name": "pose_command"},
-    )
-    final_heading_reward = RewTerm(
-        func=mdp.final_heading_reward,
         weight=1.0,
         params={"Tr": T_R, "T": EPISODE_LENGTH_S, "command_name": "pose_command"},
     )
@@ -203,7 +198,7 @@ class RewardsCfg:
     # -- reward for time efficiency
     time_efficiency_reward = RewTerm(
         func=mdp.time_efficiency_reward,
-        weight=1.0,
+        weight=2.0,
         params={"T": EPISODE_LENGTH_S, "command_name": "pose_command"}
     )
 
