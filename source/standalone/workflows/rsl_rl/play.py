@@ -130,12 +130,12 @@ def main():
 
             if np.any(dones.cpu().numpy()):
                 done_indices = np.where(dones.cpu().numpy())[0]
-                for idx in done_indices:
-                    episode_rewards.append(current_rewards[idx])
-                    episode_lengths.append(current_lengths[idx])
-                    current_rewards[idx] = 0
-                    current_lengths[idx] = 0
-                    num_episodes += 1
+                # for idx in done_indices:
+                #     episode_rewards.append(current_rewards[idx])
+                #     episode_lengths.append(current_lengths[idx])
+                #     current_rewards[idx] = 0
+                #     current_lengths[idx] = 0
+                #     num_episodes += 1
 
                 # Print the results so far
                 print(f"Num Episodes: {num_episodes}, Mean Reward: {np.mean(episode_rewards)}, Mean Length: {np.mean(episode_lengths)}")

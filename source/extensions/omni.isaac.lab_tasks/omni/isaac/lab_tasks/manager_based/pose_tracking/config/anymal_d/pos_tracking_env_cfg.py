@@ -172,6 +172,11 @@ class RewardsCfg:
         weight=1.0,
         params={"Tr": T_R, "T": EPISODE_LENGTH_S, "command_name": "pose_command"},
     )
+    final_heading_reward = RewTerm(
+        func=mdp.final_heading_reward,
+        weight=1.0,
+        params={"Tr": T_R, "T": EPISODE_LENGTH_S, "command_name": "pose_command"},
+    )
     # # -- penalties
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
     ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
