@@ -19,33 +19,29 @@ import omni.isaac.lab.utils.math as math_utils
 
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedRLEnv
+    from omni.isaac.lab.managers.command_manager import CommandTerm
 
 
-def final_position_reward(env: ManagerBasedRLEnv, Tr: float, T: float, command_name: str) -> torch.Tensor:
+def _command_duration_mask(env: ManagerBasedRLEnv, duration: float, command_name: str):
+    command: CommandTerm = env.command_manager.get_term(command_name)
+    mask = command.time_left <= duration
+    return mask / duration
+
+def tracking_pos2(env: ManagerBasedRLEnv, duration: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """Reward for reaching the target location."""
-    command = env.command_manager.get_command(command_name)
-    distance = torch.norm(command[:, :2], dim=1)
-    t = env.elapsed_time
+    command = env.command_manager.get_term(command_name)
     
-    reward = torch.where(
-        t > T - Tr,
-        1 / Tr * 1 / (1 + distance ** 2),
-        torch.zeros_like(distance)
-    )
-    return reward
+    asset: RigidObject = env.scene[asset_cfg.name]
+    distance = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1)
+    return (1 - 0.5*distance)* _command_duration_mask(env, duration, command_name)
 
-def final_heading_reward(env: ManagerBasedRLEnv, Tr: float, T: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
-    """Reward for maintaining the desired heading."""
-    command = env.command_manager.get_command(command_name)
-    heading_error = command[:, 3].abs()
-    t = env.elapsed_time
-
-    reward = torch.where(
-        t > T - Tr,
-        -1.0 * heading_error / Tr,
-        torch.zeros_like(heading_error)
-    )
-    return reward
+def tracking_heading2(env: ManagerBasedRLEnv, duration: float, command_name: str, max_pos_distance: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+    command = env.command_manager.get_term(command_name)
+    asset: RigidObject = env.scene[asset_cfg.name]
+    
+    distance = torch.abs(math_utils.wrap_to_pi(command.heading_command_w - asset.data.heading_w))
+    position_distance = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1)
+    return (1 - 0.5*distance)* (position_distance < max_pos_distance) * _command_duration_mask(env, duration, command_name)
 
 """
 Root penalties.
@@ -75,6 +71,20 @@ def flat_orientation_l2(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = Scen
     asset: RigidObject = env.scene[asset_cfg.name]
     return torch.sum(torch.square(asset.data.projected_gravity_b[:, :2]), dim=1)
 
+def base_acc(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot", body_names="base")):
+    """Penalize high base accelerations.
+
+    The function computes the acceleration penalty based on the difference in the root state
+    velocities and angular velocities over the time step `env.dt`.
+    """
+    asset: RigidObject = env.scene[asset_cfg.name]
+    # Compute linear acceleration
+    linear_acc_sum = torch.sum(torch.square(asset.data.body_acc_w[:, asset_cfg.body_ids, :3]), dim=-1).squeeze(1)
+    # Compute angular acceleration
+    angular_acc_sum = 0.02 * torch.sum(torch.square(asset.data.body_acc_w[:, asset_cfg.body_ids, 3:]), dim=-1).squeeze(1)
+
+    return linear_acc_sum + angular_acc_sum
+    
 
 """
 Joint penalties.
@@ -100,6 +110,15 @@ def joint_acc_l2(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntity
     asset: Articulation = env.scene[asset_cfg.name]
     return torch.sum(torch.square(asset.data.joint_acc[:, asset_cfg.joint_ids]), dim=1)
 
+def joint_vel_l2(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+    """Penalize joint velocities on the articulation using L2 squared kernel.
+
+    NOTE: Only the joints configured in :attr:`asset_cfg.joint_ids` will have their joint velocities contribute to the term.
+    """
+    # extract the used quantities (to enable type-hinting)
+    asset: Articulation = env.scene[asset_cfg.name]
+    return torch.sum(torch.square(asset.data.joint_vel[:, asset_cfg.joint_ids]), dim=1)
+
 
 def joint_pos_limits(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """Penalize joint positions if they cross the soft limits.
@@ -116,6 +135,13 @@ def joint_pos_limits(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEn
         asset.data.joint_pos[:, asset_cfg.joint_ids] - asset.data.soft_joint_pos_limits[:, asset_cfg.joint_ids, 1]
     ).clip(min=0.0)
     return torch.sum(out_of_limits, dim=1)
+
+"""
+Feet penalties.
+"""
+def feet_acc(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+    return torch.sum(torch.norm(asset.data.body_acc_w[:, asset_cfg.body_ids], dim=-1), dim=1)
 
 
 """
@@ -140,7 +166,6 @@ def applied_torque_limits(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = Sc
         asset.data.applied_torque[:, asset_cfg.joint_ids] - asset.data.computed_torque[:, asset_cfg.joint_ids]
     )
     return torch.sum(out_of_limits, dim=1)
-
 
 def action_rate_l2(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Penalize the rate of change of the actions using L2-kernel."""
@@ -178,38 +203,64 @@ def contact_forces(env: ManagerBasedRLEnv, threshold: float, sensor_cfg: SceneEn
     # compute the penalty
     return torch.sum(violation.clip(min=0.0), dim=1)
 
+
+def contact_forces_sq(env: ManagerBasedRLEnv, max_contact_force: float, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+    """Penalize high contact forces with a squared penalty for violations."""
+    # Extract the used quantities (to enable type-hinting)
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    net_contact_forces = contact_sensor.data.net_forces_w_history
+    # Compute the norm of the contact forces
+    contact_forces = torch.norm(net_contact_forces[:, :, sensor_cfg.body_ids], dim=-1)
+    # Clip the contact forces to a maximum value of 2 * max_contact_force
+    clipped_contact_forces = contact_forces.clip(max=2.0 * max_contact_force)
+    # Compute the squared penalty for forces exceeding the max_contact_force threshold
+    violation = torch.square((clipped_contact_forces - max_contact_force).clip(min=0.0))
+    # Sum the penalties across the selected bodies and timesteps
+    return torch.sum(violation, dim=1)
+
+
+def collision(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+    """Penalize collisions on selected bodies using the history of contact forces."""
+    # Extract the used quantities (to enable type-hinting)
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    net_contact_forces = contact_sensor.data.net_forces_w_history
+    # Compute the collision force
+    collision_force = torch.max(torch.norm(net_contact_forces[:, :, sensor_cfg.body_ids], dim=-1), dim=1)[0]
+    # Apply conditional clipping
+    collision_force = torch.where(collision_force > 1.0, collision_force.clip(min=200.0), collision_force)
+    
+    return torch.sum(collision_force, dim=(1)) / 200.0
+
 # -- exploration reward
-def exploration_reward(env, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"), epsilon: float = 1e-8) -> torch.Tensor:
+def move_in_direction(env: ManagerBasedRLEnv, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """Encourage exploration towards the target."""
     command = env.command_manager.get_command(command_name)
-    des_pos_b = command[:, :2]
-    distance = torch.norm(des_pos_b, dim=1).unsqueeze(1) + epsilon
-
+    vel_target = command[:, :2] / (torch.norm(command[:, :2], dim=1).unsqueeze(1) + 0.1)
+    
     asset: RigidObject = env.scene[asset_cfg.name]
-    x_dot_b = asset.data.root_lin_vel_b[:, :2]
-
-    direction = des_pos_b / distance
-    x_dot_b_norm = torch.norm(x_dot_b, dim=1) + epsilon
-    reward = (x_dot_b * direction).sum(dim=1) / x_dot_b_norm
-    return reward
+    vel = asset.data.root_lin_vel_b[:, :2] / (torch.norm(asset.data.root_lin_vel_b[:, :2], dim=1).unsqueeze(1) + 0.1)
+    
+    return vel[:, 0] * vel_target[:, 0] + vel[:, 1] * vel_target[:, 1]
     
 
 # -- stalling penalty
-def stalling_penalty(env, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+def dont_wait(env: ManagerBasedRLEnv, min_vel: str, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """Penalize stalling."""
-    command = env.command_manager.get_command(command_name)
-    des_pos_b = command[:, :2]
-    distance = torch.norm(des_pos_b, dim=1)
-
+    command = env.command_manager.get_term(command_name)
+    
     asset: RigidObject = env.scene[asset_cfg.name]
-    x_dot_b = asset.data.root_lin_vel_b[:, :2]
+    far_away = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1) > 0.25
+    waiting = torch.norm(asset.data.root_lin_vel_w[:, :2], dim=1) < min_vel
 
-    penalty = torch.where(
-        (torch.norm(x_dot_b, dim=1) < 0.1) & (distance > 0.5),
-        torch.tensor(-1.0, device=x_dot_b.device),
-        torch.tensor(0.0, device=x_dot_b.device),
-    )
-    return penalty
+    return far_away * waiting
+
+def stand_still_pose(env: ManagerBasedRLEnv, duration: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
+    command = env.command_manager.get_term(command_name)
+    
+    asset: Articulation = env.scene[asset_cfg.name]
+    should_stand = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1) < 0.25
+    should_stand &= torch.abs(command.heading_command_w - asset.data.heading_w) < 0.5
+    return torch.sum(torch.square(asset.data.joint_pos - asset.data.default_joint_pos), dim=1) * should_stand * _command_duration_mask(env, duration, command_name)
 
 # -- time efficiency reward
 def time_efficiency_reward(env: ManagerBasedRLEnv, T: float, command_name: str) -> torch.Tensor:
@@ -239,17 +290,3 @@ def time_efficiency_reward(env: ManagerBasedRLEnv, T: float, command_name: str) 
 
     return reward
 
-# -- pose tracking error with tanh kernel
-def position_command_error_tanh(env: ManagerBasedRLEnv, std: float, command_name: str) -> torch.Tensor:
-    """Reward position tracking with tanh kernel."""
-    command = env.command_manager.get_command(command_name)
-    des_pos_b = command[:, :3]
-    distance = torch.norm(des_pos_b, dim=1)
-    return 1 - torch.tanh(distance / std)
-
-
-def heading_command_error_abs(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
-    """Penalize tracking orientation error."""
-    command = env.command_manager.get_command(command_name)
-    heading_b = command[:, 3]
-    return heading_b.abs()

@@ -21,6 +21,7 @@ from omni.isaac.lab.sensors import RayCaster
 
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedEnv, ManagerBasedRLEnv
+    from omni.isaac.lab.managers.command_manager import CommandTerm
 
 """
 Root state.
@@ -208,6 +209,21 @@ def generated_commands(env: ManagerBasedRLEnv, command_name: str) -> torch.Tenso
     """The generated command from command term in the command manager with the given name."""
     return env.command_manager.get_command(command_name)
 
-def get_remaining_time(env: ManagerBasedRLEnv) -> torch.Tensor:
-    """The remaining time in the episode."""
-    return env._get_remaining_time()
+# specific to pos targets
+def pos_commands(env: ManagerBasedRLEnv, command_name: str):
+    command = env.command_manager.get_command(command_name)
+    return command[:, :2]
+
+def heading_commands(env: ManagerBasedRLEnv, command_name: str):
+    command = env.command_manager.get_command(command_name)
+    return command[:, -1].unsqueeze(1)
+
+def heading_commands_sin(env: ManagerBasedRLEnv, command_name: str):
+    command = env.command_manager.get_command(command_name)
+    angle = command[:, -1].unsqueeze(1)  # target command - current heading?
+    return torch.cat((torch.sin(angle), torch.cos(angle)), dim=1)
+
+def time_to_target(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
+    """The remaining time in the episode. Normalized by the maximum episode length."""
+    command: CommandTerm = env.command_manager.get_term(command_name)
+    return command.time_left.unsqueeze(1) / env.max_episode_length_s

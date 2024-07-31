@@ -112,7 +112,7 @@ class Articulation(RigidObject):
         self._debug_vis_handle = None
         
         # set initial state of debug visualization
-        self.set_debug_vis(debug_vis=True)
+        self.set_debug_vis(debug_vis=self.cfg.debug_vis)
 
     def __del__(self):
         """Unsubscribe from the callbacks."""

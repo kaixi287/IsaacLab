@@ -28,8 +28,6 @@ import omni.isaac.lab_tasks.manager_based.navigation.mdp as mdp_nav
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.anymal_d.flat_env_cfg import AnymalDFlatEnvCfg
 
 LOW_LEVEL_ENV_CFG = AnymalDFlatEnvCfg()
-EPISODE_LENGTH_S = 6.0
-T_R = 1.0
 
 ##
 # Pre-defined configs
@@ -48,11 +46,11 @@ class CommandsCfg:
 
     pose_command = mdp.UniformPose2dCommandCfg(
         asset_name="robot",
-        simple_heading=False,
-        resampling_time_range=(EPISODE_LENGTH_S, EPISODE_LENGTH_S),
+        simple_heading=True,
+        resampling_time_range=(7.0, 9.0),
         debug_vis=True,
-        polar_sampling=True,
-        ranges=mdp.UniformPose2dCommandCfg.Ranges(pos_x=(-3.0, 3.0), pos_y=(-3.0, 3.0), heading=(-math.pi, math.pi)),
+        polar_sampling=False,
+        ranges=mdp.UniformPose2dCommandCfg.Ranges(pos_x=(-4.0, 4.0), pos_y=(-4.0, 4.0), heading=(-math.pi, math.pi)),
         polar_ranges=mdp.UniformPose2dCommandCfg.PolarRanges(radius=(1.0, 5.0), theta=(-math.pi, math.pi), heading=(-math.pi, math.pi)),
     )
 
@@ -79,7 +77,10 @@ class ObservationsCfg:
             func=mdp.projected_gravity,
             noise=Unoise(n_min=-0.05, n_max=0.05),
         )
-        pose_commands = ObsTerm(func=mdp.generated_commands, params={"command_name": "pose_command"})
+        # pose_commands = ObsTerm(func=mdp.generated_commands, params={"command_name": "pose_command"})
+        pos_commands = ObsTerm(func=mdp.pos_commands, params={"command_name": "pose_command"})
+        heading_commands = ObsTerm(func=mdp.heading_commands_sin, params={"command_name": "pose_command"})
+        time_to_target = ObsTerm(func=mdp.time_to_target, params={"command_name": "pose_command"}, noise=Unoise(n_min=-0.1, n_max=0.1))
         joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
         actions = ObsTerm(func=mdp.last_action)
@@ -89,14 +90,14 @@ class ObservationsCfg:
             noise=Unoise(n_min=-0.1, n_max=0.1),
             clip=(-1.0, 1.0),
         )
-        remaining_time = ObsTerm(func=mdp.get_remaining_time)
-
-        def __post_init__(self):
-            self.enable_corruption = True
-            self.concatenate_terms = True
+        
+        def __post_init__(self, enable_corruption=True, concatenate_terms=True):
+            self.enable_corruption = enable_corruption
+            self.concatenate_terms = concatenate_terms
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
+    critic: PolicyCfg = PolicyCfg(enable_corruption=False)
 
 
 @configclass
@@ -152,71 +153,97 @@ class EventCfg:
         },
     )
 
-    block_joint = EventTerm(
-        func=mdp.block_joint,
-        mode="reset",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "joint_to_block": -1, # Index of joint to disable
-            "prob_no_block": 0.2,
-        },
-    )
+    # block_joint = EventTerm(
+    #     func=mdp.block_joint,
+    #     mode="reset",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+    #         "joint_to_block": -1, # Index of joint to disable
+    #         "prob_no_block": 0.2,
+    #     },
+    # )
 
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
 
+    termination = RewTerm(func=mdp.is_terminated, weight=-200.0)
     # -- task
-    final_position_reward = RewTerm(
-        func=mdp.final_position_reward,
-        weight=1.0,
-        params={"Tr": T_R, "T": EPISODE_LENGTH_S, "command_name": "pose_command"},
+    tracking_pos = RewTerm(
+        func=mdp.tracking_pos2,
+        weight=10.0,
+        params={"duration": 3.0, "command_name": "pose_command"},
     )
-    final_heading_reward = RewTerm(
-        func=mdp.final_heading_reward,
-        weight=1.0,
-        params={"Tr": T_R, "T": EPISODE_LENGTH_S, "command_name": "pose_command"},
+    tracking_heading = RewTerm(
+        func=mdp.tracking_heading2,
+        weight=5.0,
+        params={"duration": 3.0, "command_name": "pose_command", "max_pos_distance": 0.5},
     )
     # # -- penalties
-    lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
-    ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
+    # lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
+    # ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
     dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-1.0e-5)
-    dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
+    dof_vel_l2 = RewTerm(func=mdp.joint_vel_l2, weight=-0.001)
+    base_acc = RewTerm(
+        func=mdp.base_acc, 
+        weight=-0.001,
+        params={"asset_cfg": SceneEntityCfg("robot", body_names=["base"])}
+    )
+    # dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
     action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
-    undesired_contacts = RewTerm(
-        func=mdp.undesired_contacts,
-        weight=-1.0,
-        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*THIGH"), "threshold": 1.0},
-    )
+    collision = RewTerm(func=mdp.collision, weight=-0.5, params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*(THIGH|SHANK)")})
     # # -- optional penalties
-    flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=-0.5)
-    dof_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=0.0)
+    # flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=-0.5)
+    # dof_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=0.0)
+    applied_torque_limits = RewTerm(func=mdp.applied_torque_limits, weight=-0.2)
+    dont_wait = RewTerm(func=mdp.dont_wait, weight=-1.0, params={"min_vel": 0.2, "command_name": "pose_command"})
+    move_in_direction = RewTerm(func=mdp.move_in_direction, weight=1.0, params={"command_name": "pose_command"})    
 
-    # -- exploration
-    exploration = RewTerm(func=mdp.exploration_reward, weight=0.5, params={"command_name": "pose_command"})
-
-    # -- stalling policy penalty
-    stalling_penalty = RewTerm(func=mdp.stalling_penalty, weight=1.0, params={"command_name": "pose_command"})
-
-    termination_penalty = RewTerm(func=mdp.is_terminated, weight=-400.0)
-    
-    # -- reward for time efficiency
-    time_efficiency_reward = RewTerm(
-        func=mdp.time_efficiency_reward,
-        weight=2.0,
-        params={"T": EPISODE_LENGTH_S, "command_name": "pose_command"}
+    dof_vel_limits = RewTerm(func=mdp.joint_vel_limits, weight=-1.0, params={"soft_ratio": 0.9})
+    feet_acc = RewTerm(
+        func=mdp.feet_acc,
+        weight=-0.002,
+        params={"asset_cfg": SceneEntityCfg("robot", body_names=["LF_FOOT", "RF_FOOT", "LH_FOOT", "RH_FOOT"])}
     )
+    
+    # undesired_contacts = RewTerm(
+    #     func=mdp.undesired_contacts,
+    #     weight=-1.0,
+    #     params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*THIGH"), "threshold": 1.0},
+    # )
+    contact_forces = RewTerm(
+        func=mdp.contact_forces,
+        weight=-0.00001,
+        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*"), "threshold": 700.0},
+    )
+    stand_still = RewTerm(func=mdp.stand_still_pose, weight=-0.5, params={"duration": 1.0, "command_name": "pose_command"})
+    
+    # # -- reward for time efficiency
+    # time_efficiency_reward = RewTerm(
+    #     func=mdp.time_efficiency_reward,
+    #     weight=2.0,
+    #     params={"T": EPISODE_LENGTH_S, "command_name": "pose_command"}
+    # )
 
 
 @configclass
 class TerminationsCfg:
     """Termination terms for the MDP."""
 
-    time_out = DoneTerm(func=mdp.time_out, time_out=True)
+    # time_out = DoneTerm(func=mdp.time_out, time_out=True)
     base_contact = DoneTerm(
         func=mdp.illegal_contact,
         params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0},
     )
+    illegal_force_feet = DoneTerm(
+        func=mdp.illegal_force,
+        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*FOOT"), "max_force": 1500},
+    )
+    illegal_force = DoneTerm(
+        func=mdp.illegal_force,
+        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*"), "max_force": 5000},
+    )
+    command_resample = DoneTerm(func=mdp.command_resample, params={"command_name": "pose_command", "num_resamples": 1})
 
 
 @configclass
@@ -263,6 +290,8 @@ class PosTrackingEnvCfg(ManagerBasedRLEnvCfg):
             self.scene.height_scanner.update_period = self.decimation * self.sim.dt
         else:
             self.observations.policy.height_scan = None
+            self.observations.critic.height_scan = None
+            
         if self.scene.contact_forces is not None:
             self.scene.contact_forces.update_period = self.sim.dt
 
@@ -274,6 +303,9 @@ class PosTrackingEnvCfg(ManagerBasedRLEnvCfg):
         else:
             if self.scene.terrain.terrain_generator is not None:
                 self.scene.terrain.terrain_generator.curriculum = False
+        
+        if getattr(self.events, "block_joint", None) is not None:
+            self.scene.robot.debug_vis = True
 
 class PosTrackingEnvCfg_PLAY(PosTrackingEnvCfg):
     def __post_init__(self) -> None:

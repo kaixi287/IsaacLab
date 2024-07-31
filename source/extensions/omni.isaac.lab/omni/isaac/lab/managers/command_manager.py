@@ -365,6 +365,13 @@ class CommandManager(ManagerBase):
             The command term with the specified name.
         """
         return self._terms[name]
+    
+    def time_left(self, name: str) -> torch.Tensor:
+            """Compute the time left for the specified command term."""
+            if name in self._terms:
+                return self._terms[name].time_left
+            else:
+                raise ValueError(f"Command term '{name}' not found in the command manager.")
 
     """
     Helper functions.
