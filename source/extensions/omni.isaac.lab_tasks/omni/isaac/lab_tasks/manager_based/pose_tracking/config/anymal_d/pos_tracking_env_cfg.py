@@ -152,15 +152,15 @@ class EventCfg:
         },
     )
 
-    block_joint = EventTerm(
-        func=mdp.block_joint,
-        mode="reset",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "joint_to_block": -1, # Index of joint to disable
-            "prob_no_block": 0.2,
-        },
-    )
+    # block_joint = EventTerm(
+    #     func=mdp.block_joint,
+    #     mode="reset",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+    #         "joint_to_block": -1, # Index of joint to disable
+    #         "prob_no_block": 0.2,
+    #     },
+    # )
 
 @configclass
 class RewardsCfg:
@@ -274,6 +274,9 @@ class PosTrackingEnvCfg(ManagerBasedRLEnvCfg):
         else:
             if self.scene.terrain.terrain_generator is not None:
                 self.scene.terrain.terrain_generator.curriculum = False
+        
+        if getattr(self.events, "block_joint", None) is not None:
+            self.scene.robot.debug_vis = True
 
 class PosTrackingEnvCfg_PLAY(PosTrackingEnvCfg):
     def __post_init__(self) -> None:
