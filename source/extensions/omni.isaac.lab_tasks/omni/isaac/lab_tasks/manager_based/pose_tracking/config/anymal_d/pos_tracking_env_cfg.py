@@ -170,12 +170,12 @@ class RewardsCfg:
     termination = RewTerm(func=mdp.is_terminated, weight=-200.0)
     # -- task
     tracking_pos = RewTerm(
-        func=mdp.tracking_pos2,
+        func=mdp.tracking_pos,
         weight=10.0,
         params={"duration": 3.0, "command_name": "pose_command"},
     )
     tracking_heading = RewTerm(
-        func=mdp.tracking_heading2,
+        func=mdp.tracking_heading,
         weight=5.0,
         params={"duration": 3.0, "command_name": "pose_command", "max_pos_distance": 0.5},
     )

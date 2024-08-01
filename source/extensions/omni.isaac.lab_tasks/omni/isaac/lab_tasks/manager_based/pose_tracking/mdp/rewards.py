@@ -27,6 +27,15 @@ def _command_duration_mask(env: ManagerBasedRLEnv, duration: float, command_name
     mask = command.time_left <= duration
     return mask / duration
 
+def tracking_pos(env: ManagerBasedRLEnv, duration: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
+    command = env.command_manager.get_term(command_name)
+    
+    asset: RigidObject = env.scene[asset_cfg.name]
+    distance = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1)
+
+    return (1. /(1. + torch.square(distance))) * _command_duration_mask(env, duration, command_name)
+
+
 def tracking_pos2(env: ManagerBasedRLEnv, duration: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """Reward for reaching the target location."""
     command = env.command_manager.get_term(command_name)
@@ -34,6 +43,16 @@ def tracking_pos2(env: ManagerBasedRLEnv, duration: float, command_name: str, as
     asset: RigidObject = env.scene[asset_cfg.name]
     distance = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1)
     return (1 - 0.5*distance)* _command_duration_mask(env, duration, command_name)
+
+
+def tracking_heading(env: ManagerBasedRLEnv, duration: float, command_name: str,  max_pos_distance: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
+    command = env.command_manager.get_term(command_name)
+    asset: RigidObject = env.scene[asset_cfg.name]
+    
+    distance = torch.abs(math_utils.wrap_to_pi(command.heading_command_w - asset.data.heading_w))
+    position_distance = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1)
+    return (1. /(1. + torch.square(distance))) * (position_distance < max_pos_distance) * _command_duration_mask(env, duration, command_name)
+
 
 def tracking_heading2(env: ManagerBasedRLEnv, duration: float, command_name: str, max_pos_distance: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     command = env.command_manager.get_term(command_name)
