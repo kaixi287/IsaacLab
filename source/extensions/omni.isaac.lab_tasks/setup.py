@@ -41,6 +41,7 @@ EXTRAS_REQUIRE = {
     "sb3": ["stable-baselines3>=2.1"],
     "skrl": ["skrl>=1.2.0"],
     "rl-games": ["rl-games==1.6.1", "gym"],  # rl-games still needs gym :(
+    # "rsl-rl": ["rsl-rl@git+https://github.com/kaixi287/rsl_rl.git@rnn_concat_output"],
     "rsl-rl": ["rsl-rl@git+https://github.com/leggedrobotics/rsl_rl.git"],
     "robomimic": [],
 }
