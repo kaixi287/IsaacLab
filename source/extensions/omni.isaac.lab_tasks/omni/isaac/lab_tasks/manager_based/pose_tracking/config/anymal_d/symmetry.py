@@ -116,7 +116,7 @@ def get_symmetric_states(
         # Check if height_scan is enabled
         has_height_scan = False
         if env is not None:
-            if is_critic:
+            if is_critic and hasattr(env.cfg.observations, 'critic'):
                 has_height_scan = hasattr(env.cfg.observations.critic, 'height_scan') and env.cfg.observations.critic.height_scan
             else:
                 has_height_scan = hasattr(env.cfg.observations.policy, 'height_scan') and env.cfg.observations.policy.height_scan
