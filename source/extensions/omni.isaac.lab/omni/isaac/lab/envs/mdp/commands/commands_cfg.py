@@ -177,6 +177,9 @@ class UniformPose2dCommandCfg(CommandTermCfg):
 
     polar_ranges: PolarRanges = MISSING
     """Distribution ranges for the polar position commands."""
+    
+    generate_symmetric_commands: bool = False
+    """Whether to generate symmetric commands or not."""
 
 
 @configclass

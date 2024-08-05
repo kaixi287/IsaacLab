@@ -27,6 +27,20 @@ def _command_duration_mask(env: ManagerBasedRLEnv, duration: float, command_name
     mask = command.time_left <= duration
     return mask / duration
 
+# def final_position_reward(env: ManagerBasedRLEnv, duration: float, command_name: str) -> torch.Tensor:
+#     """Reward for reaching the target location."""
+#     command = env.command_manager.get_command(command_name)
+#     distance = torch.norm(command[:, :2], dim=1)
+    
+#     return 1 / duration * (1. /(1. + torch.square(distance))) * _command_duration_mask(env, duration, command_name)
+
+# def final_heading_reward(env: ManagerBasedRLEnv, duration: float, command_name: str) -> torch.Tensor:
+#     """Reward for maintaining the desired heading."""
+#     command = env.command_manager.get_command(command_name)
+#     heading_error = command[:, 3].abs()
+
+#     return 1 / duration * (1. /(1. + torch.square(heading_error))) * _command_duration_mask(env, duration, command_name)
+
 def tracking_pos(env: ManagerBasedRLEnv, duration: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
     command = env.command_manager.get_term(command_name)
     
@@ -280,6 +294,39 @@ def stand_still_pose(env: ManagerBasedRLEnv, duration: float, command_name: str,
     should_stand = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1) < 0.25
     should_stand &= torch.abs(command.heading_command_w - asset.data.heading_w) < 0.5
     return torch.sum(torch.square(asset.data.joint_pos - asset.data.default_joint_pos), dim=1) * should_stand * _command_duration_mask(env, duration, command_name)
+
+# # -- exploration reward
+# def exploration_reward(env, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"), epsilon: float = 1e-8) -> torch.Tensor:
+#     """Encourage exploration towards the target."""
+#     command = env.command_manager.get_command(command_name)
+#     des_pos_b = command[:, :2]
+#     distance = torch.norm(des_pos_b, dim=1).unsqueeze(1) + epsilon
+
+#     asset: RigidObject = env.scene[asset_cfg.name]
+#     x_dot_b = asset.data.root_lin_vel_b[:, :2]
+
+#     direction = des_pos_b / distance
+#     x_dot_b_norm = torch.norm(x_dot_b, dim=1) + epsilon
+#     reward = (x_dot_b * direction).sum(dim=1) / x_dot_b_norm
+#     return reward
+    
+
+# # -- stalling penalty
+# def stalling_penalty(env, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+#     """Penalize stalling."""
+#     command = env.command_manager.get_command(command_name)
+#     des_pos_b = command[:, :2]
+#     distance = torch.norm(des_pos_b, dim=1)
+
+#     asset: RigidObject = env.scene[asset_cfg.name]
+#     x_dot_b = asset.data.root_lin_vel_b[:, :2]
+
+#     penalty = torch.where(
+#         (torch.norm(x_dot_b, dim=1) < 0.1) & (distance > 0.5),
+#         torch.tensor(-1.0, device=x_dot_b.device),
+#         torch.tensor(0.0, device=x_dot_b.device),
+#     )
+#     return penalty
 
 # -- time efficiency reward
 def time_efficiency_reward(env: ManagerBasedRLEnv, T: float, command_name: str) -> torch.Tensor:
