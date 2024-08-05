@@ -47,17 +47,10 @@ def _switch_legs_fb(dof):
 
 def _transform_obs_left_right(obs, has_height_scan=False):
     obs = obs.clone()
-    device = obs.device
-    # lin vel
-    obs[..., :3] = obs[..., :3] * torch.tensor([1, -1, 1], device=device)
-    # ang vel
-    obs[..., 3:6] = obs[..., 3:6] * torch.tensor([-1, 1, -1], device=device)
-    # projected gravity
-    obs[..., 6:9] = obs[..., 6:9] * torch.tensor([1, -1, 1], device=device)
-    # commands pos
-    obs[..., 9:11] = obs[..., 9:11] * torch.tensor([1, -1], device=device)
-    # commands heading (sin)
-    obs[..., 11:13] = obs[..., 11:13] * torch.tensor([-1, 1], device=device)
+    # Flip lin vel y [1], ang vel x,z [3, 5], gravity y [7]
+    obs[..., [1, 3, 5, 7]] *= -1
+    # Flip commands pos y [10], commands heading sin [11]
+    obs[..., [10, 11]] *= -1
     # dof pos
     obs[..., 14:26] = _switch_legs_lr(obs[..., 14:26])
     # dof vel
@@ -71,17 +64,10 @@ def _transform_obs_left_right(obs, has_height_scan=False):
 
 def _transform_obs_front_back(obs, has_height_scan=False):
     obs = obs.clone()
-    device = obs.device
-    # lin vel
-    obs[..., :3] = obs[..., :3] * torch.tensor([-1, 1, 1], device=device)
-    # ang vel
-    obs[..., 3:6] = obs[..., 3:6] * torch.tensor([1, -1, -1], device=device)
-    # projected gravity
-    obs[..., 6:9] = obs[..., 6:9] * torch.tensor([-1, 1, 1], device=device)
-    # commands pos
-    obs[..., 9:11] = obs[..., 9:11] * torch.tensor([-1, 1], device=device)
-    # commands heading (sin)
-    obs[..., 11:13] = obs[..., 11:13] * torch.tensor([-1, 1], device=device)
+    # Flip lin vel x [0], ang vel y,z [4, 5], gravity x [6]
+    obs[..., [0, 4, 5, 6]] *= -1
+    # Flip commands pos x [9], commands heading sin [11]
+    obs[..., [9, 11]] *= -1
     # dof pos
     obs[..., 14:26] = _switch_legs_fb(obs[..., 14:26])
     # dof vel
