@@ -158,7 +158,7 @@ class EventCfg:
     #     mode="reset",
     #     params={
     #         "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-    #         "joint_to_block": [0, 4, 8], # Index of joint to disable
+    #         "joint_to_block": -1, # Index of joint to disable
     #         "prob_no_block": 0.2,
     #     },
     # )
@@ -193,23 +193,13 @@ class RewardsCfg:
     flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=-0.5)
     dof_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=0.0)
 
-    # # -- exploration
-    # exploration = RewTerm(func=mdp.exploration_reward, weight=0.5, params={"command_name": "pose_command"})
-
-    # # -- stalling policy penalty
-    # stalling_penalty = RewTerm(func=mdp.stalling_penalty, weight=1.0, params={"command_name": "pose_command"})
-
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-400.0)
     
     dont_wait = RewTerm(func=mdp.dont_wait, weight=-1.0, params={"min_vel": 0.2, "command_name": "pose_command"})
     move_in_direction = RewTerm(func=mdp.move_in_direction, weight=1.0, params={"command_name": "pose_command"}) 
     
     # -- reward for time efficiency
-    time_efficiency_reward = RewTerm(
-        func=mdp.time_efficiency_reward,
-        weight=5.0,
-        params={"T": 8.0, "command_name": "pose_command"}
-    )
+    time_efficiency_reward = RewTerm(func=mdp.time_efficiency_reward, weight=2.0, params={"command_name": "pose_command"})
     
     # parkour tuning rewards
     # dof_vel_l2 = RewTerm(func=mdp.joint_vel_l2, weight=-0.001)

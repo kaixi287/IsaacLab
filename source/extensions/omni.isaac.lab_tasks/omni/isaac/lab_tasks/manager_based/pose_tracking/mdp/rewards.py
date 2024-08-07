@@ -265,13 +265,15 @@ def collision(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg) -> torch.Tenso
     return torch.sum(collision_force, dim=(1)) / 200.0
 
 # -- exploration reward
-def move_in_direction(env: ManagerBasedRLEnv, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+def move_in_direction(env: ManagerBasedRLEnv, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"), epsilon: float = 1e-8) -> torch.Tensor:
     """Encourage exploration towards the target."""
     command = env.command_manager.get_command(command_name)
-    vel_target = command[:, :2] / (torch.norm(command[:, :2], dim=1).unsqueeze(1) + 0.1)
+    des_pos_b = command[:, :2]
+    vel_target = des_pos_b / (torch.norm(des_pos_b, dim=1).unsqueeze(1) + epsilon)
     
     asset: RigidObject = env.scene[asset_cfg.name]
-    vel = asset.data.root_lin_vel_b[:, :2] / (torch.norm(asset.data.root_lin_vel_b[:, :2], dim=1).unsqueeze(1) + 0.1)
+    x_dot_b = asset.data.root_lin_vel_b[:, :2]
+    vel = x_dot_b / (torch.norm(x_dot_b, dim=1).unsqueeze(1) + epsilon)
     
     return vel[:, 0] * vel_target[:, 0] + vel[:, 1] * vel_target[:, 1]
     
@@ -295,64 +297,16 @@ def stand_still_pose(env: ManagerBasedRLEnv, duration: float, command_name: str,
     should_stand &= torch.abs(command.heading_command_w - asset.data.heading_w) < 0.5
     return torch.sum(torch.square(asset.data.joint_pos - asset.data.default_joint_pos), dim=1) * should_stand * _command_duration_mask(env, duration, command_name)
 
-# # -- exploration reward
-# def exploration_reward(env, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"), epsilon: float = 1e-8) -> torch.Tensor:
-#     """Encourage exploration towards the target."""
-#     command = env.command_manager.get_command(command_name)
-#     des_pos_b = command[:, :2]
-#     distance = torch.norm(des_pos_b, dim=1).unsqueeze(1) + epsilon
-
-#     asset: RigidObject = env.scene[asset_cfg.name]
-#     x_dot_b = asset.data.root_lin_vel_b[:, :2]
-
-#     direction = des_pos_b / distance
-#     x_dot_b_norm = torch.norm(x_dot_b, dim=1) + epsilon
-#     reward = (x_dot_b * direction).sum(dim=1) / x_dot_b_norm
-#     return reward
-    
-
-# # -- stalling penalty
-# def stalling_penalty(env, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
-#     """Penalize stalling."""
-#     command = env.command_manager.get_command(command_name)
-#     des_pos_b = command[:, :2]
-#     distance = torch.norm(des_pos_b, dim=1)
-
-#     asset: RigidObject = env.scene[asset_cfg.name]
-#     x_dot_b = asset.data.root_lin_vel_b[:, :2]
-
-#     penalty = torch.where(
-#         (torch.norm(x_dot_b, dim=1) < 0.1) & (distance > 0.5),
-#         torch.tensor(-1.0, device=x_dot_b.device),
-#         torch.tensor(0.0, device=x_dot_b.device),
-#     )
-#     return penalty
-
 # -- time efficiency reward
-def time_efficiency_reward(env: ManagerBasedRLEnv, T: float, command_name: str) -> torch.Tensor:
+def time_efficiency_reward(env: ManagerBasedRLEnv, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """
     Reward for reaching the target quickly.
     """
     # Get the command representing the target position
-    command = env.command_manager.get_command(command_name)
-    # Calculate the distance to the target
-    distance = torch.norm(command[:, :2], dim=1)
-    # Calculate the heading error
-    heading_error = command[:, 3].abs()
+    command = env.command_manager.get_term(command_name)
+    asset: RigidObject = env.scene[asset_cfg.name]
+    heading_reached = torch.abs(math_utils.wrap_to_pi(command.heading_command_w - asset.data.heading_w)) < 0.1
+    position_reached = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1) < 0.1
     
-    # Check if the goal is reached
-    position_reached = distance < 0.1
-    heading_reached = heading_error < 0.1
-
-    # Current time in the episode
-    t = env.elapsed_time
-
-    # Reward based on how quickly the goal is achieved
-    reward = torch.where(
-        position_reached & heading_reached,
-        1.0 - (t / T),
-        torch.zeros_like(t)
-    )
-
-    return reward
+    return command.time_left / env.max_episode_length_s * heading_reached * position_reached
 

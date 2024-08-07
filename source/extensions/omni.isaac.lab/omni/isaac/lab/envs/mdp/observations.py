@@ -220,7 +220,7 @@ def heading_commands(env: ManagerBasedRLEnv, command_name: str):
 
 def heading_commands_sin(env: ManagerBasedRLEnv, command_name: str):
     command = env.command_manager.get_command(command_name)
-    angle = command[:, -1].unsqueeze(1)  # target command - current heading?
+    angle = command[:, -1].unsqueeze(1)
     return torch.cat((torch.sin(angle), torch.cos(angle)), dim=1)
 
 def time_to_target(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
