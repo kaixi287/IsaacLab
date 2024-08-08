@@ -27,6 +27,8 @@ parser.add_argument("--num_envs", type=int, default=None, help="Number of enviro
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
 parser.add_argument("--log_root_path", type=str, default=None, help="Relative path of log root directory.")
+parser.add_argument("--test_symmetry", action="store_true", default=False, help="Whether to test symmetry augmentation.")
+
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
 # append AppLauncher cli args
@@ -54,6 +56,8 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
     export_policy_as_jit,
     export_policy_as_onnx,
 )
+if args_cli.test_symmetry:
+    from omni.isaac.lab_tasks.manager_based.pose_tracking.config.anymal_d.symmetry import get_symmetric_states
 
 
 def main():
@@ -73,6 +77,7 @@ def main():
     print(f"[INFO] Loading experiment from directory: {log_root_path}")
     resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
     print(f"[INFO]: Loading model checkpoint from: {resume_path}")
+    test_symmetry = args_cli.test_symmetry
 
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
@@ -116,7 +121,14 @@ def main():
 
     current_rewards = np.zeros(env.num_envs)
     current_lengths = np.zeros(env.num_envs)
-
+    
+    if test_symmetry:
+        batch_size = env.num_envs // 4
+        symmetry_loss = np.zeros(env.num_envs)
+        episode_symmetry_loss = []
+        # Get symmetric states for the initial observations and actions
+        obs, _ = get_symmetric_states(obs=obs[:batch_size], env=env, is_critic=False)
+        
     step = 0
     # simulate environment
     while simulation_app.is_running():
@@ -127,18 +139,34 @@ def main():
 
             current_rewards += rewards.cpu().numpy()
             current_lengths += 1
+            
+            if test_symmetry:
+                # Get symmetric observations and actions
+                obs, _ = get_symmetric_states(obs=obs[:batch_size], env=env, is_critic=False)
+                _, sym_actions = get_symmetric_states(actions=actions[:batch_size], env=env, is_critic=False)
+                # compute the loss between prdicted actions and symmetric actions
+                mse_loss = torch.nn.MSELoss()
+                loss = mse_loss(actions, sym_actions)
+                symmetry_loss += loss.detach().cpu().numpy()
 
             if np.any(dones.cpu().numpy()):
                 done_indices = np.where(dones.cpu().numpy())[0]
-                # for idx in done_indices:
-                #     episode_rewards.append(current_rewards[idx])
-                #     episode_lengths.append(current_lengths[idx])
-                #     current_rewards[idx] = 0
-                #     current_lengths[idx] = 0
-                #     num_episodes += 1
+                for idx in done_indices:
+                    episode_rewards.append(current_rewards[idx])
+                    episode_lengths.append(current_lengths[idx])
+                    current_rewards[idx] = 0
+                    current_lengths[idx] = 0
+                    num_episodes += 1
+                    if test_symmetry:
+                        episode_symmetry_loss.append(symmetry_loss[idx])
+                        symmetry_loss[idx] = 0
+                        
 
                 # Print the results so far
-                print(f"Num Episodes: {num_episodes}, Mean Reward: {np.mean(episode_rewards)}, Mean Length: {np.mean(episode_lengths)}")
+                string = f"Num Episodes: {num_episodes}, Mean Reward: {np.mean(episode_rewards)}, Mean Length: {np.mean(episode_lengths)}"
+                if test_symmetry:
+                    string += f", Mean Symmetry Loss: {np.mean(episode_symmetry_loss)}"
+                print(string)
                 
                 # Exit after a fixed number of episodes for evaluation
                 if num_episodes >= 100000:
