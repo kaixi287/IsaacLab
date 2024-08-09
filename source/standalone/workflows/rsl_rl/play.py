@@ -115,23 +115,25 @@ def main():
     obs, _ = env.get_observations()
 
     # metrics
-    num_episodes = 0
-    episode_rewards = []
-    episode_lengths = []
+    num_envs = env.num_envs
+    first_episode_rewards = np.zeros(num_envs)
+    episode_completed = np.zeros(num_envs, dtype=bool)  # Track whether the first episode is completed for each env
+    current_rewards = np.zeros(num_envs)
+    current_lengths = np.zeros(num_envs)
 
-    current_rewards = np.zeros(env.num_envs)
-    current_lengths = np.zeros(env.num_envs)
-    
     if test_symmetry:
-        batch_size = env.num_envs // 4
-        symmetry_loss = np.zeros(env.num_envs)
+        batch_size = num_envs // 4
+        symmetry_loss = np.zeros(num_envs)
         episode_symmetry_loss = []
+
         # Get symmetric states for the initial observations and actions
         obs, _ = get_symmetric_states(obs=obs[:batch_size], env=env, is_critic=False)
         
     step = 0
+    num_episodes_recorded = 0
+
     # simulate environment
-    while simulation_app.is_running():
+    while simulation_app.is_running() and num_episodes_recorded < num_envs:
         # run everything in inference mode
         with torch.inference_mode():
             actions = policy(obs)
@@ -144,7 +146,7 @@ def main():
                 # Get symmetric observations and actions
                 obs, _ = get_symmetric_states(obs=obs[:batch_size], env=env, is_critic=False)
                 _, sym_actions = get_symmetric_states(actions=actions[:batch_size], env=env, is_critic=False)
-                # compute the loss between prdicted actions and symmetric actions
+                # compute the loss between predicted actions and symmetric actions
                 mse_loss = torch.nn.MSELoss()
                 loss = mse_loss(actions, sym_actions)
                 symmetry_loss += loss.detach().cpu().numpy()
@@ -152,24 +154,28 @@ def main():
             if np.any(dones.cpu().numpy()):
                 done_indices = np.where(dones.cpu().numpy())[0]
                 for idx in done_indices:
-                    episode_rewards.append(current_rewards[idx])
-                    episode_lengths.append(current_lengths[idx])
+                    if not episode_completed[idx]:
+                        # Record the reward of the first episode
+                        first_episode_rewards[idx] = current_rewards[idx]
+                        episode_completed[idx] = True
+                        num_episodes_recorded += 1
+
+                    # Reset current rewards and lengths for the next episode
                     current_rewards[idx] = 0
                     current_lengths[idx] = 0
-                    num_episodes += 1
+                    
                     if test_symmetry:
                         episode_symmetry_loss.append(symmetry_loss[idx])
                         symmetry_loss[idx] = 0
-                        
 
-                # Print the results so far
-                string = f"Num Episodes: {num_episodes}, Mean Reward: {np.mean(episode_rewards)}, Mean Length: {np.mean(episode_lengths)}"
+                # Print the progress
+                string = f"Num Episodes Recorded: {num_episodes_recorded}/{num_envs}, Mean First Episode Reward (So Far): {np.mean(first_episode_rewards[episode_completed])}"
                 if test_symmetry:
-                    string += f", Mean Symmetry Loss: {np.mean(episode_symmetry_loss)}"
+                    string += f", Mean Symmetry Loss (So Far): {np.mean(episode_symmetry_loss)}"
                 print(string)
-                
-                # Exit after a fixed number of episodes for evaluation
-                if num_episodes >= 100000:
+
+                # Exit after recording the first episode for all environments
+                if num_episodes_recorded >= num_envs:
                     break
 
             # Record video at specified intervals
@@ -182,10 +188,10 @@ def main():
             
             step += 1
 
-    # Print final metrics
-    print(f"Final Mean Reward: {np.mean(episode_rewards)}")
-    print(f"Final Mean Episode Length: {np.mean(episode_lengths)}")
-
+    # Print final metrics for the first episodes
+    print(f"Final Mean First Episode Reward: {np.mean(first_episode_rewards)}")
+    print(f"Final Sum First Episode Reward: {np.sum(first_episode_rewards)}")
+    print(f"Number of Recorded First Episodes: {num_episodes_recorded}")
     # close the simulator
     env.close()
 
