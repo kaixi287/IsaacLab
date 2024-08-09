@@ -74,7 +74,10 @@ class UniformPose2dCommand(CommandTerm):
     @property
     def command(self) -> torch.Tensor:
         """The desired 2D-pose in base frame. Shape is (num_envs, 4)."""
-        return torch.cat([self.pos_command_b, self.heading_command_b.unsqueeze(1)], dim=1)
+        if self.cfg.with_heading:
+            return torch.cat([self.pos_command_b, self.heading_command_b.unsqueeze(1)], dim=1)
+        else:
+            return self.pos_command_b
     
     @property
     def pos_command_w(self) -> torch.Tensor:
@@ -116,41 +119,45 @@ class UniformPose2dCommand(CommandTerm):
         
         # offset the position command by the default root height
         self._pos_command_w[env_ids, 2] += self.robot.data.default_root_state[env_ids, 2]
+        
+        if self.cfg.with_heading:
+            if self.cfg.simple_heading:
+                # set heading command to point towards target
+                target_vec = self._pos_command_w[env_ids] - self.robot.data.root_pos_w[env_ids]
+                target_direction = torch.atan2(target_vec[:, 1], target_vec[:, 0])
+                flipped_target_direction = wrap_to_pi(target_direction + torch.pi)
 
-        if self.cfg.simple_heading:
-            # set heading command to point towards target
-            target_vec = self._pos_command_w[env_ids] - self.robot.data.root_pos_w[env_ids]
-            target_direction = torch.atan2(target_vec[:, 1], target_vec[:, 0])
-            flipped_target_direction = wrap_to_pi(target_direction + torch.pi)
+                # compute errors to find the closest direction to the current heading
+                # this is done to avoid the discontinuity at the -pi/pi boundary
+                curr_to_target = wrap_to_pi(target_direction - self.robot.data.heading_w[env_ids]).abs()
+                curr_to_flipped_target = wrap_to_pi(flipped_target_direction - self.robot.data.heading_w[env_ids]).abs()
 
-            # compute errors to find the closest direction to the current heading
-            # this is done to avoid the discontinuity at the -pi/pi boundary
-            curr_to_target = wrap_to_pi(target_direction - self.robot.data.heading_w[env_ids]).abs()
-            curr_to_flipped_target = wrap_to_pi(flipped_target_direction - self.robot.data.heading_w[env_ids]).abs()
-
-            # set the heading command to the closest direction
-            self._heading_command_w[env_ids] = torch.where(
-                curr_to_target < curr_to_flipped_target,
-                target_direction,
-                flipped_target_direction,
-            )
-        else:
-            # random heading command
-            self._heading_command_w[env_ids] = r.uniform_(*self.cfg.ranges.heading)
+                # set the heading command to the closest direction
+                self._heading_command_w[env_ids] = torch.where(
+                    curr_to_target < curr_to_flipped_target,
+                    target_direction,
+                    flipped_target_direction,
+                )
+            else:
+                # random heading command
+                self._heading_command_w[env_ids] = r.uniform_(*self.cfg.ranges.heading)
 
     def _update_command(self):
         """Re-target the position command to the current root state."""
         target_vec = self._pos_command_w - self.robot.data.root_pos_w[:, :3]
         self.pos_command_b[:] = quat_rotate_inverse(yaw_quat(self.robot.data.root_quat_w), target_vec)
-        self.heading_command_b[:] = wrap_to_pi(self._heading_command_w - self.robot.data.heading_w)
+        if self.cfg.with_heading:
+            self.heading_command_b[:] = wrap_to_pi(self._heading_command_w - self.robot.data.heading_w)
 
     def _set_debug_vis_impl(self, debug_vis: bool):
         # create markers if necessary for the first tome
         if debug_vis:
             if not hasattr(self, "arrow_goal_visualizer"):
-                # marker_cfg = TARGET_POSITION_MARKER_CFG.copy()
-                marker_cfg = GREEN_ARROW_X_MARKER_CFG.copy()
-                marker_cfg.markers["arrow"].scale = (0.2, 0.2, 0.8)
+                if self.cfg.with_heading:
+                    marker_cfg = GREEN_ARROW_X_MARKER_CFG.copy()
+                    marker_cfg.markers["arrow"].scale = (0.2, 0.2, 0.8)
+                else:
+                    marker_cfg = TARGET_POSITION_MARKER_CFG.copy()
                 marker_cfg.prim_path = "/Visuals/Command/pose_goal"
                 self.arrow_goal_visualizer = VisualizationMarkers(marker_cfg)
                 # -- current base pose

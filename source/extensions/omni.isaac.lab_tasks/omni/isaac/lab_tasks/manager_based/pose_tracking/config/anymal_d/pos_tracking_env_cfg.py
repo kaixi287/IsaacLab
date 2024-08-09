@@ -47,11 +47,12 @@ class CommandsCfg:
     pose_command = mdp.UniformPose2dCommandCfg(
         asset_name="robot",
         simple_heading=False,
-        resampling_time_range=(7.0, 9.0),
+        resampling_time_range=(8.0, 8.0),
         debug_vis=True,
         polar_sampling=True,
         ranges=mdp.UniformPose2dCommandCfg.Ranges(pos_x=(-3.0, 3.0), pos_y=(-3.0, 3.0), heading=(-math.pi, math.pi)),
         polar_ranges=mdp.UniformPose2dCommandCfg.PolarRanges(radius=(1.0, 5.0), theta=(-math.pi, math.pi), heading=(-math.pi, math.pi)),
+        with_heading=True
     )
 
 
@@ -153,15 +154,15 @@ class EventCfg:
         },
     )
 
-    # block_joint = EventTerm(
-    #     func=mdp.block_joint,
-    #     mode="reset",
-    #     params={
-    #         "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-    #         "joint_to_block": -1, # Index of joint to disable
-    #         "prob_no_block": 0.2,
-    #     },
-    # )
+    block_joint = EventTerm(
+        func=mdp.block_joint,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+            "joint_to_block": -1, # Index of joint to disable
+            "prob_no_block": 0.2,
+        },
+    )
 
 @configclass
 class RewardsCfg:
@@ -229,20 +230,20 @@ class RewardsCfg:
 class TerminationsCfg:
     """Termination terms for the MDP."""
 
-    # time_out = DoneTerm(func=mdp.time_out, time_out=True)
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)
     base_contact = DoneTerm(
         func=mdp.illegal_contact,
         params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0},
     )
-    # illegal_force_feet = DoneTerm(
-    #     func=mdp.illegal_force,
-    #     params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*FOOT"), "max_force": 1500},
-    # )
-    # illegal_force = DoneTerm(
-    #     func=mdp.illegal_force,
-    #     params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*"), "max_force": 5000},
-    # )
-    command_resample = DoneTerm(func=mdp.command_resample, params={"command_name": "pose_command", "num_resamples": 0})
+    illegal_force_feet = DoneTerm(
+        func=mdp.illegal_force,
+        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*FOOT"), "max_force": 1500},
+    )
+    illegal_force = DoneTerm(
+        func=mdp.illegal_force,
+        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*"), "max_force": 5000},
+    )
+    # command_resample = DoneTerm(func=mdp.command_resample, params={"command_name": "pose_command", "num_resamples": 1})
 
 
 @configclass
@@ -317,4 +318,4 @@ class PosTrackingEnvCfg_PLAY(PosTrackingEnvCfg):
         # disable randomization for play
         self.observations.policy.enable_corruption = False
         # generate symmetric commands
-        self.commands.pose_command.generate_symmetric_commands = True
+        # self.commands.pose_command.generate_symmetric_commands = True
