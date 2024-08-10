@@ -145,7 +145,7 @@ CURR_POSITION_MARKER_CFG = VisualizationMarkersCfg(
     }
 )
 
-TARGET_POSITION_MARKER_CFG = VisualizationMarkersCfg(
+GREEN_SPHERE_MARKER_CFG = VisualizationMarkersCfg(
     markers={
         "target_position": sim_utils.SphereCfg(
             radius=0.1,

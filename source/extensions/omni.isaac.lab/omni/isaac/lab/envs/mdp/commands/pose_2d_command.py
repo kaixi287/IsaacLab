@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 from omni.isaac.lab.assets import Articulation
 from omni.isaac.lab.managers import CommandTerm
 from omni.isaac.lab.markers import VisualizationMarkers
-from omni.isaac.lab.markers.config import GREEN_ARROW_X_MARKER_CFG, BLUE_ARROW_X_MARKER_CFG, CURR_POSITION_MARKER_CFG, TARGET_POSITION_MARKER_CFG
+from omni.isaac.lab.markers.config import GREEN_ARROW_X_MARKER_CFG, BLUE_ARROW_X_MARKER_CFG, CURR_POSITION_MARKER_CFG, GREEN_SPHERE_MARKER_CFG
 from omni.isaac.lab.terrains import TerrainImporter
 from omni.isaac.lab.utils.math import quat_from_euler_xyz, quat_rotate_inverse, wrap_to_pi, yaw_quat
 
@@ -74,7 +74,7 @@ class UniformPose2dCommand(CommandTerm):
     @property
     def command(self) -> torch.Tensor:
         """The desired 2D-pose in base frame. Shape is (num_envs, 4)."""
-        if self.cfg.with_heading:
+        if self.cfg.include_heading:
             return torch.cat([self.pos_command_b, self.heading_command_b.unsqueeze(1)], dim=1)
         else:
             return self.pos_command_b
@@ -120,7 +120,7 @@ class UniformPose2dCommand(CommandTerm):
         # offset the position command by the default root height
         self._pos_command_w[env_ids, 2] += self.robot.data.default_root_state[env_ids, 2]
         
-        if self.cfg.with_heading:
+        if self.cfg.include_heading:
             if self.cfg.simple_heading:
                 # set heading command to point towards target
                 target_vec = self._pos_command_w[env_ids] - self.robot.data.root_pos_w[env_ids]
@@ -146,18 +146,20 @@ class UniformPose2dCommand(CommandTerm):
         """Re-target the position command to the current root state."""
         target_vec = self._pos_command_w - self.robot.data.root_pos_w[:, :3]
         self.pos_command_b[:] = quat_rotate_inverse(yaw_quat(self.robot.data.root_quat_w), target_vec)
-        if self.cfg.with_heading:
+        if self.cfg.include_heading:
             self.heading_command_b[:] = wrap_to_pi(self._heading_command_w - self.robot.data.heading_w)
 
     def _set_debug_vis_impl(self, debug_vis: bool):
         # create markers if necessary for the first tome
         if debug_vis:
             if not hasattr(self, "arrow_goal_visualizer"):
-                if self.cfg.with_heading:
+                if self.cfg.include_heading:
+                    # Use arrow marker for the target position with heading
                     marker_cfg = GREEN_ARROW_X_MARKER_CFG.copy()
                     marker_cfg.markers["arrow"].scale = (0.2, 0.2, 0.8)
                 else:
-                    marker_cfg = TARGET_POSITION_MARKER_CFG.copy()
+                    # Use sphere marker for the target position without heading
+                    marker_cfg = GREEN_SPHERE_MARKER_CFG.copy()
                 marker_cfg.prim_path = "/Visuals/Command/pose_goal"
                 self.arrow_goal_visualizer = VisualizationMarkers(marker_cfg)
                 # -- current base pose

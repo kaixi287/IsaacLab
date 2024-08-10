@@ -134,6 +134,9 @@ class UniformPose2dCommandCfg(CommandTermCfg):
 
     asset_name: str = MISSING
     """Name of the asset in the environment for which the commands are generated."""
+    
+    include_heading: bool = True
+    """Whether to include heading in the commands or not."""
 
     simple_heading: bool = MISSING
     """Whether to use simple heading or not.
@@ -177,9 +180,6 @@ class UniformPose2dCommandCfg(CommandTermCfg):
 
     polar_ranges: PolarRanges = MISSING
     """Distribution ranges for the polar position commands."""
-    
-    with_heading: bool = True
-    """Whether to include heading in the commands or not."""
     
     generate_symmetric_commands: bool = False
     """Whether to generate symmetric commands or not."""

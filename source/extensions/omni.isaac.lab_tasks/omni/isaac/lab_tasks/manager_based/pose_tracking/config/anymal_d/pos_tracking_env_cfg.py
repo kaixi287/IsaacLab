@@ -52,7 +52,7 @@ class CommandsCfg:
         polar_sampling=True,
         ranges=mdp.UniformPose2dCommandCfg.Ranges(pos_x=(-3.0, 3.0), pos_y=(-3.0, 3.0), heading=(-math.pi, math.pi)),
         polar_ranges=mdp.UniformPose2dCommandCfg.PolarRanges(radius=(1.0, 5.0), theta=(-math.pi, math.pi), heading=(-math.pi, math.pi)),
-        with_heading=True
+        include_heading==False
     )
 
 
@@ -80,7 +80,7 @@ class ObservationsCfg:
         )
         # pose_commands = ObsTerm(func=mdp.generated_commands, params={"command_name": "pose_command"})
         pos_commands = ObsTerm(func=mdp.pos_commands, params={"command_name": "pose_command"})
-        heading_commands = ObsTerm(func=mdp.heading_commands_sin, params={"command_name": "pose_command"})
+        # heading_commands = ObsTerm(func=mdp.heading_commands_sin, params={"command_name": "pose_command"})
         time_to_target = ObsTerm(func=mdp.time_to_target, params={"command_name": "pose_command"}, noise=Unoise(n_min=-0.1, n_max=0.1))
         joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
@@ -154,15 +154,15 @@ class EventCfg:
         },
     )
 
-    block_joint = EventTerm(
-        func=mdp.block_joint,
-        mode="reset",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "joint_to_block": -1, # Index of joint to disable
-            "prob_no_block": 0.2,
-        },
-    )
+    # block_joint = EventTerm(
+    #     func=mdp.block_joint,
+    #     mode="reset",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+    #         "joint_to_block": -1, # Index of joint to disable
+    #         "prob_no_block": 0.0,
+    #     },
+    # )
 
 @configclass
 class RewardsCfg:
@@ -174,11 +174,11 @@ class RewardsCfg:
         weight=10.0,
         params={"duration": 3.0, "command_name": "pose_command"},
     )
-    tracking_heading = RewTerm(
-        func=mdp.tracking_heading2,
-        weight=5.0,
-        params={"duration": 3.0, "command_name": "pose_command", "max_pos_distance": 0.5},
-    )
+    # tracking_heading = RewTerm(
+    #     func=mdp.tracking_heading2,
+    #     weight=5.0,
+    #     params={"duration": 3.0, "command_name": "pose_command", "max_pos_distance": 0.5},
+    # )
     # # -- penalties
     # lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
     # ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
@@ -200,7 +200,7 @@ class RewardsCfg:
     move_in_direction = RewTerm(func=mdp.move_in_direction, weight=1.0, params={"command_name": "pose_command"}) 
     
     # -- reward for time efficiency
-    time_efficiency_reward = RewTerm(func=mdp.time_efficiency_reward, weight=2.0, params={"command_name": "pose_command"})
+    # time_efficiency_reward = RewTerm(func=mdp.time_efficiency_reward, weight=2.0, params={"command_name": "pose_command"})
     
     # parkour tuning rewards
     dof_vel_l2 = RewTerm(func=mdp.joint_vel_l2, weight=-0.001)
