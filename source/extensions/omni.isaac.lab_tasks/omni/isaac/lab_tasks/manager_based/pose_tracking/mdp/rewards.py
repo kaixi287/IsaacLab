@@ -172,9 +172,30 @@ def joint_pos_limits(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEn
 """
 Feet penalties.
 """
-def feet_acc(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+def feet_acc(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot", body_names=[".*_FOOT"])) -> torch.Tensor:
     asset: Articulation = env.scene[asset_cfg.name]
     return torch.sum(torch.norm(asset.data.body_acc_w[:, asset_cfg.body_ids], dim=-1), dim=1)
+
+def feet_balance(env: ManagerBasedRLEnv, duration: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot", body_names=[".*_FOOT"])) -> torch.Tensor:
+    """
+    Penalize foot positions that are unbalanced with respect to the base center if the robot should stand still.
+    """
+    asset: Articulation = env.scene[asset_cfg.name]
+    
+    root_position = asset.data.root_pos_w
+    foot_positions = asset.data.body_pos_w[:, asset_cfg.body_ids]  # Extract only the positions (first 3 values)
+
+    # Calculate distances of each foot from the base center
+    distances_from_center = torch.norm(foot_positions - root_position.unsqueeze(1), dim=-1)
+
+    # Calculate the imbalance as the variance in these distances (higher variance indicates more imbalance)
+    imbalance = torch.var(distances_from_center, dim=1)
+    
+    command = env.command_manager.get_term(command_name)
+    should_stand = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1) < 0.25
+    should_stand &= torch.abs(command.heading_command_w - asset.data.heading_w) < 0.5
+
+    return imbalance * should_stand * _command_duration_mask(env, duration, command_name)
 
 
 """
