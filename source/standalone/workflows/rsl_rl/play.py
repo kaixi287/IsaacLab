@@ -34,6 +34,9 @@ cli_args.add_rsl_rl_args(parser)
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
+# always enable cameras to record video
+if args_cli.video:
+    args_cli.enable_cameras = True
 
 # launch omniverse app
 app_launcher = AppLauncher(args_cli)
@@ -44,6 +47,7 @@ simulation_app = app_launcher.app
 import gymnasium as gym
 import os
 import torch
+import sys
 import numpy as np
 
 from rsl_rl.runners import OnPolicyRunner
@@ -74,6 +78,9 @@ def main():
         # specify directory for logging experiments
         log_root_path = os.path.join("logs", "rsl_rl", agent_cfg.experiment_name)
     log_root_path = os.path.abspath(log_root_path)
+    # log_file = os.path.join(log_root_path, "evaluation.log")
+    # sys.stdout = open(log_file, 'a')
+    # sys.stderr = open(log_file, 'a')
     print(f"[INFO] Loading experiment from directory: {log_root_path}")
     resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
     print(f"[INFO]: Loading model checkpoint from: {resume_path}")
@@ -128,12 +135,13 @@ def main():
 
         # Get symmetric states for the initial observations and actions
         obs, _ = get_symmetric_states(obs=obs[:batch_size], env=env, is_critic=False)
+        assert obs.shape[0] == num_envs
         
     step = 0
     num_episodes_recorded = 0
 
     # simulate environment
-    while simulation_app.is_running() and num_episodes_recorded < num_envs:
+    while simulation_app.is_running() and num_episodes_recorded < 50 * num_envs:
         # run everything in inference mode
         with torch.inference_mode():
             actions = policy(obs)
@@ -144,8 +152,7 @@ def main():
             
             if test_symmetry:
                 # Get symmetric observations and actions
-                obs, _ = get_symmetric_states(obs=obs[:batch_size], env=env, is_critic=False)
-                _, sym_actions = get_symmetric_states(actions=actions[:batch_size], env=env, is_critic=False)
+                obs, sym_actions = get_symmetric_states(obs=obs[:batch_size], actions=actions[:batch_size], env=env)
                 # compute the loss between predicted actions and symmetric actions
                 mse_loss = torch.nn.MSELoss()
                 loss = mse_loss(actions, sym_actions)
@@ -171,12 +178,12 @@ def main():
                 # Print the progress
                 string = f"Num Episodes Recorded: {num_episodes_recorded}/{num_envs}, Mean First Episode Reward (So Far): {np.mean(first_episode_rewards[episode_completed])}"
                 if test_symmetry:
-                    string += f", Mean Symmetry Loss (So Far): {np.mean(episode_symmetry_loss)}"
+                    string += f", Mean Symmetry Loss (So Far over {len(episode_symmetry_loss)} episodes): {np.mean(episode_symmetry_loss)}"
                 print(string)
 
-                # Exit after recording the first episode for all environments
-                if num_episodes_recorded >= num_envs:
-                    break
+            #     # Exit after recording the first episode for all environments
+            #     if num_episodes_recorded >= num_envs:
+            #         break
 
             # Record video at specified intervals
             if args_cli.video and step % args_cli.video_interval == 0:
