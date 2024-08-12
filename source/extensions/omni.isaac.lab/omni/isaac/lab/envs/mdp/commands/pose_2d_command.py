@@ -100,9 +100,10 @@ class UniformPose2dCommand(CommandTerm):
         # obtain env origins for the environments
         self._pos_command_w[env_ids] = self._env.scene.env_origins[env_ids]
 
+        torch.manual_seed(42)
+        
         if self.cfg.polar_sampling:
             # Sample random radii and angles for polar coordinates
-            # torch.manual_seed(42)
             r = torch.empty(len(env_ids), device=self.device)
             theta = torch.empty(len(env_ids), device=self.device)
 
