@@ -83,7 +83,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         self.episode_length_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
         print("[INFO]: Completed setting up the environment...")
 
-        torch.manual_seed(42)
+        # torch.manual_seed(42)
 
     """
     Properties.

@@ -61,7 +61,7 @@ class UniformPose2dCommand(CommandTerm):
         self.metrics["error_pos"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["error_heading"] = torch.zeros(self.num_envs, device=self.device)
 
-        torch.manual_seed(42)
+        # torch.manual_seed(42)
 
     def __str__(self) -> str:
         msg = "PositionCommand:\n"

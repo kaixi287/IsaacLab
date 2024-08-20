@@ -77,7 +77,6 @@ def block_joint(
 
     num_envs = len(env_ids)
 
-    torch.manual_seed(42)
     # Determine whether to block joints based on probability
     block_decision = torch.rand(num_envs, device=asset.device) >= prob_no_block
 
