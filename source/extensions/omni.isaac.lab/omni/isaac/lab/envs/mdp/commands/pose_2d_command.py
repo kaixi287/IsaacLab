@@ -61,6 +61,8 @@ class UniformPose2dCommand(CommandTerm):
         self.metrics["error_pos"] = torch.zeros(self.num_envs, device=self.device)
         self.metrics["error_heading"] = torch.zeros(self.num_envs, device=self.device)
 
+        torch.manual_seed(42)
+
     def __str__(self) -> str:
         msg = "PositionCommand:\n"
         msg += f"\tCommand dimension: {tuple(self.command.shape[1:])}\n"
@@ -99,8 +101,6 @@ class UniformPose2dCommand(CommandTerm):
     def _resample_command(self, env_ids: Sequence[int]):
         # obtain env origins for the environments
         self._pos_command_w[env_ids] = self._env.scene.env_origins[env_ids]
-
-        torch.manual_seed(42)
         
         if self.cfg.polar_sampling:
             # Sample random radii and angles for polar coordinates
