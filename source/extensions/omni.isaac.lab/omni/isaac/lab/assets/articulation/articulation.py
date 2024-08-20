@@ -25,7 +25,7 @@ import omni.isaac.lab.utils.string as string_utils
 from omni.isaac.lab.actuators import ActuatorBase, ActuatorBaseCfg, ImplicitActuator
 
 from omni.isaac.lab.markers import VisualizationMarkers
-from omni.isaac.lab.markers.config import JOINT_MARKER_CFG
+from omni.isaac.lab.markers.config import YELLOW_JOINT_MARKER_CFG, GREEN_JOINT_MARKER_CFG, PINK_JOINT_MARKER_CFG, ORANGE_JOINT_MARKER_CFG
 
 from ..rigid_object import RigidObject
 from .articulation_data import ArticulationData
@@ -104,6 +104,8 @@ class Articulation(RigidObject):
         Args:
             cfg: A configuration instance.
         """
+        self.distinct_marker = True
+
         super().__init__(cfg)
         # data for storing actuator group
         self.actuators: dict[str, ActuatorBase] = dict.fromkeys(self.cfg.actuators.keys())
@@ -212,15 +214,26 @@ class Articulation(RigidObject):
     def _set_debug_vis_impl(self, debug_vis: bool):
         # create markers if necessary
         if debug_vis:
-            if not hasattr(self, "joint_marker"):
-                marker_cfg = JOINT_MARKER_CFG.copy()
-                marker_cfg.prim_path = "/Visuals/Joints"
-                self.joint_marker = VisualizationMarkers(marker_cfg)
+            if not hasattr(self, "yellow_joint_marker"):
+                yellow_marker_cfg = YELLOW_JOINT_MARKER_CFG.copy()
+                yellow_marker_cfg.prim_path = "/Visuals/Joints/Yellow"
+                self.yellow_joint_marker = VisualizationMarkers(yellow_marker_cfg)
+            
+            if self.distinct_marker:
+                if not hasattr(self, "pink_joint_marker"):
+                    pink_marker_cfg = PINK_JOINT_MARKER_CFG.copy()
+                    pink_marker_cfg.prim_path = "/Visuals/Joints/Pink"
+                    self.pink_joint_marker = VisualizationMarkers(pink_marker_cfg)
+                self.pink_joint_marker.set_visibility(True)
+                
             # set their visibility to true
-            self.joint_marker.set_visibility(True)
+            self.yellow_joint_marker.set_visibility(True)
         else:
-            if hasattr(self, "joint_marker"):
-                self.joint_marker.set_visibility(False)
+            if hasattr(self, "yellow_joint_marker"):
+                self.yellow_joint_marker.set_visibility(False)
+            if self.distinct_marker:
+                if hasattr(self, "pink_joint_marker"):
+                    self.pink_joint_marker.set_visibility(False)
 
     def _debug_vis_callback(self, event):
         # Check if the articulation is valid
@@ -241,8 +254,22 @@ class Articulation(RigidObject):
                 blocked_joint_pos = link_transforms[block_mask.nonzero(as_tuple=False).squeeze(), link_ids, :3]
                 # (num_envs, num_joints_to_block, 3) --> (num_envs * num_joints_to_block, 3)
                 blocked_joint_pos = blocked_joint_pos.view(-1, 3)
-                self.joint_marker.visualize(blocked_joint_pos)      
 
+                if self.distinct_marker:
+                    # Separate the joints for visualization
+                    left_front_leg_mask = torch.isin(self.all_blocked_joints[block_mask], torch.tensor([0, 4, 8], device=self.device))
+
+                    if torch.any(left_front_leg_mask):
+                        # Visualize left front leg joints in pink
+                        pink_joint_pos = blocked_joint_pos[left_front_leg_mask]
+                        self.pink_joint_marker.visualize(pink_joint_pos)
+                    
+                    if torch.any(~left_front_leg_mask):
+                        # Visualize other joints in yellow
+                        yellow_joint_pos = blocked_joint_pos[~left_front_leg_mask]
+                        self.yellow_joint_marker.visualize(yellow_joint_pos)
+                else:
+                    self.yellow_joint_marker.visualize(blocked_joint_pos)                    
     """
     Operations.
     """

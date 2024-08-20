@@ -125,11 +125,38 @@ POSITION_GOAL_MARKER_CFG = VisualizationMarkersCfg(
 # joints.
 ##
 
-JOINT_MARKER_CFG = VisualizationMarkersCfg(
+YELLOW_JOINT_MARKER_CFG = VisualizationMarkersCfg(
     markers={
         "blocked_joints": sim_utils.SphereCfg(
             radius=0.1,
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 1.0, 0.0)),
+        ),
+    }
+)
+
+PINK_JOINT_MARKER_CFG = VisualizationMarkersCfg(
+    markers={
+        "blocked_joints": sim_utils.SphereCfg(
+            radius=0.1,
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.0, 1.0)),  # RGB for pink
+        ),
+    }
+)
+
+ORANGE_JOINT_MARKER_CFG = VisualizationMarkersCfg(
+    markers={
+        "blocked_joints": sim_utils.SphereCfg(
+            radius=0.1,
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.25, 0.0)),  # RGB for orange
+        ),
+    }
+)
+
+GREEN_JOINT_MARKER_CFG = VisualizationMarkersCfg(
+    markers={
+        "blocked_joints": sim_utils.SphereCfg(
+            radius=0.1,
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 1.0, 0.0)),  # RGB for green
         ),
     }
 )

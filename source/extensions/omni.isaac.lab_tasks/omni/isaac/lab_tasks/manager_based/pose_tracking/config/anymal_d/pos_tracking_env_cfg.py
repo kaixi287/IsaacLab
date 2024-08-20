@@ -215,7 +215,7 @@ class RewardsCfg:
     feet_acc = RewTerm(
         func=mdp.feet_acc,
         weight=-0.002,
-        params={"asset_cfg": SceneEntityCfg("robot", body_names=["LF_FOOT", "RF_FOOT", "LH_FOOT", "RH_FOOT"])}
+        params={"asset_cfg": SceneEntityCfg("robot", body_names=[".*_FOOT"])}
     )
     contact_forces = RewTerm(
         func=mdp.contact_forces,
