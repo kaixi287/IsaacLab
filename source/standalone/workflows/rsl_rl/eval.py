@@ -82,17 +82,17 @@ def log(writer: WandbSummaryWriter, locs: dict, width: int = 80, pad: int = 35):
             value = torch.mean(infotensor)
             # log to logger and terminal
             if "/" in key:
-                writer.add_scalar(key, value, locs["it"])
+                writer.add_scalar(key, value, locs["num_episodes"])
                 ep_string += f"""{f'{key}:':>{pad}} {value:.4f}\n"""
             else:
-                writer.add_scalar("Episode/" + key, value, locs["it"])
+                writer.add_scalar("Episode/" + key, value, locs["num_episodes"])
                 ep_string += f"""{f'Mean episode {key}:':>{pad}} {value:.4f}\n"""
     
     # -- Training
     if len(locs["rewbuffer"]) > 0:
         # everything else
-        writer.add_scalar("Eval/mean_reward", statistics.mean(locs["rewbuffer"]), locs["it"])
-        writer.add_scalar("Eval/mean_episode_length", statistics.mean(locs["lenbuffer"]), locs["it"])
+        writer.add_scalar("Eval/mean_reward", statistics.mean(locs["rewbuffer"]), locs["num_episodes"])
+        writer.add_scalar("Eval/mean_episode_length", statistics.mean(locs["lenbuffer"]), locs["num_episodes"])
 
 
 def main():
@@ -161,6 +161,7 @@ def main():
     # metrics
     # Book keeping
     step = 0
+    num_episodes = 0
     ep_infos = []
     rewbuffer = deque(maxlen=1000)
     lenbuffer = deque(maxlen=1000)
@@ -175,11 +176,6 @@ def main():
             obs, rewards, dones, infos = env.step(actions)
 
             if log_dir is not None:
-                # Book keeping
-                if "episode" in infos:
-                    ep_infos.append(infos["episode"])
-                elif "log" in infos:
-                    ep_infos.append(infos["log"])
                 cur_reward_sum += rewards
                 cur_episode_length += 1
                 new_ids = (dones > 0).nonzero(as_tuple=False)
@@ -188,17 +184,24 @@ def main():
                 cur_reward_sum[new_ids] = 0
                 cur_episode_length[new_ids] = 0
 
-                if log_dir is not None:
-                    # Prepare the locs dictionary and pass it to the log function
+                if len(new_ids) > 0:
+                    num_episodes += len(new_ids)
+                    # Book keeping
+                    if "episode" in infos:
+                        ep_infos.append(infos["episode"])
+                    elif "log" in infos:
+                        ep_infos.append(infos["log"])
+
+                    # Only log infos if there are newly completed episodes
                     locs = {
                         "ep_infos": ep_infos,
                         "rewbuffer": rewbuffer,
                         "lenbuffer": lenbuffer,
-                        "it": step  # or another variable that tracks the current iteration
+                        "num_episodes": num_episodes  # or another variable that tracks the current iteration
                     }
                     log(writer, locs)
 
-                if len(lenbuffer) == 1000:
+                if num_episodes == 1000:
                     print(f"Step: {step}, Mean Reward: {statistics.mean(rewbuffer):.4f}, Mean Episode Length: {statistics.mean(lenbuffer):.4f}")
                     break
 
