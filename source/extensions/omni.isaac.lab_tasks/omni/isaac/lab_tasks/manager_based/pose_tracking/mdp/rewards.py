@@ -318,6 +318,14 @@ def stand_still_pose(env: ManagerBasedRLEnv, duration: float, command_name: str,
     should_stand &= torch.abs(command.heading_command_w - asset.data.heading_w) < 0.5
     return torch.sum(torch.square(asset.data.joint_pos - asset.data.default_joint_pos), dim=1) * should_stand * _command_duration_mask(env, duration, command_name)
 
+def stand_still(env: ManagerBasedRLEnv, duration: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
+    command = env.command_manager.get_term(command_name)
+    
+    asset: Articulation = env.scene[asset_cfg.name]
+    should_stand = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1) < 0.25
+    should_stand &= torch.abs(command.heading_command_w - asset.data.heading_w) < 0.5
+    return torch.sum(torch.square(asset.data.joint_vel[:, asset_cfg.joint_ids]), dim=1) * should_stand * _command_duration_mask(env, duration, command_name)
+
 # -- time efficiency reward
 def time_efficiency_reward(env: ManagerBasedRLEnv, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """

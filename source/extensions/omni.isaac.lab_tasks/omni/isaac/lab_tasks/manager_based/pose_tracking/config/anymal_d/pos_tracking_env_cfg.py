@@ -154,15 +154,15 @@ class EventCfg:
         },
     )
 
-    block_joint = EventTerm(
-        func=mdp.block_joint,
-        mode="reset",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "joint_to_block": -1, # Index of joint to disable
-            "prob_no_block": 0.2,
-        },
-    )
+    # block_joint = EventTerm(
+    #     func=mdp.block_joint,
+    #     mode="reset",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+    #         "joint_to_block": [0, 4, 8], # Index of joint to disable
+    #         "prob_no_block": 0.2,
+    #     },
+    # )
 
 @configclass
 class RewardsCfg:
@@ -180,7 +180,7 @@ class RewardsCfg:
     #     params={"duration": 3.0, "command_name": "pose_command", "max_pos_distance": 0.5},
     # )
     # # -- penalties
-    # lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
+    lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
     # ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
     dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-1.0e-5)
     # dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
@@ -198,9 +198,6 @@ class RewardsCfg:
     
     dont_wait = RewTerm(func=mdp.dont_wait, weight=-1.0, params={"min_vel": 0.2, "command_name": "pose_command"})
     move_in_direction = RewTerm(func=mdp.move_in_direction, weight=1.0, params={"command_name": "pose_command"}) 
-    
-    # -- reward for time efficiency
-    # time_efficiency_reward = RewTerm(func=mdp.time_efficiency_reward, weight=2.0, params={"command_name": "pose_command"})
     
     # parkour tuning rewards
     dof_vel_l2 = RewTerm(func=mdp.joint_vel_l2, weight=-0.001)
@@ -222,7 +219,7 @@ class RewardsCfg:
         weight=-0.00001,
         params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*"), "threshold": 700.0},
     )
-    # stand_still = RewTerm(func=mdp.stand_still_pose, weight=-1.0, params={"duration": 1.0, "command_name": "pose_command"})
+    stand_still = RewTerm(func=mdp.stand_still, weight=-0.1, params={"duration": 1.0, "command_name": "pose_command"})
     feet_balance = RewTerm(
         func=mdp.feet_balance,
         weight=-1000,
