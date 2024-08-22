@@ -104,7 +104,8 @@ class Articulation(RigidObject):
         Args:
             cfg: A configuration instance.
         """
-        self.distinct_marker = True
+        # List to specify in-distribution joints (those to be visualized in pink)
+        self.in_distribution_joint_ids = [0, 4, 8]
 
         super().__init__(cfg)
         # data for storing actuator group
@@ -218,20 +219,20 @@ class Articulation(RigidObject):
                 yellow_marker_cfg = YELLOW_JOINT_MARKER_CFG.copy()
                 yellow_marker_cfg.prim_path = "/Visuals/Joints/Yellow"
                 self.yellow_joint_marker = VisualizationMarkers(yellow_marker_cfg)
+            # set visibility to true
+            self.yellow_joint_marker.set_visibility(True)
             
-            if self.distinct_marker:
+            # Create pink markers for in-distribution joints
+            if self.in_distribution_joint_ids:
                 if not hasattr(self, "pink_joint_marker"):
                     pink_marker_cfg = PINK_JOINT_MARKER_CFG.copy()
                     pink_marker_cfg.prim_path = "/Visuals/Joints/Pink"
                     self.pink_joint_marker = VisualizationMarkers(pink_marker_cfg)
                 self.pink_joint_marker.set_visibility(True)
-                
-            # set their visibility to true
-            self.yellow_joint_marker.set_visibility(True)
         else:
             if hasattr(self, "yellow_joint_marker"):
                 self.yellow_joint_marker.set_visibility(False)
-            if self.distinct_marker:
+            if self.in_distribution_joint_ids:
                 if hasattr(self, "pink_joint_marker"):
                     self.pink_joint_marker.set_visibility(False)
 
@@ -255,21 +256,34 @@ class Articulation(RigidObject):
                 # (num_envs, num_joints_to_block, 3) --> (num_envs * num_joints_to_block, 3)
                 blocked_joint_pos = blocked_joint_pos.view(-1, 3)
 
-                if self.distinct_marker:
+                if self.in_distribution_joint_ids:
                     # Separate the joints for visualization
-                    left_front_leg_mask = torch.isin(self.all_blocked_joints[block_mask], torch.tensor([0, 4, 8], device=self.device))
+                    in_distribution_mask = torch.isin(self.all_blocked_joints[block_mask], torch.tensor(self.in_distribution_joint_ids, device=self.device))
 
-                    if torch.any(left_front_leg_mask):
-                        # Visualize left front leg joints in pink
-                        pink_joint_pos = blocked_joint_pos[left_front_leg_mask]
+                    if torch.any(in_distribution_mask):
+                        # Visualize in-distribution joints in pink
+                        pink_joint_pos = blocked_joint_pos[in_distribution_mask]
                         self.pink_joint_marker.visualize(pink_joint_pos)
+                        self.pink_joint_marker.set_visibility(True)
+                    else:
+                        # Set visibility to false if no in-distribution joints are found
+                        self.pink_joint_marker.set_visibility(False)
                     
-                    if torch.any(~left_front_leg_mask):
-                        # Visualize other joints in yellow
-                        yellow_joint_pos = blocked_joint_pos[~left_front_leg_mask]
+                    out_of_distribution_mask = ~in_distribution_mask
+                    if torch.any(out_of_distribution_mask):
+                        # Visualize out-of-distribution joints in yellow
+                        yellow_joint_pos = blocked_joint_pos[out_of_distribution_mask]
                         self.yellow_joint_marker.visualize(yellow_joint_pos)
+                        self.yellow_joint_marker.set_visibility(True)
+                    else:
+                        # Set visibility to false if no out-of-distribution joints are found
+                        self.yellow_joint_marker.set_visibility(False)
                 else:
-                    self.yellow_joint_marker.visualize(blocked_joint_pos)                    
+                    # If no in-distribution joints are specified, visualize all in yellow
+                    self.yellow_joint_marker.visualize(blocked_joint_pos)
+                    self.yellow_joint_marker.set_visibility(True)
+                    self.pink_joint_marker.set_visibility(False)
+                    
     """
     Operations.
     """
