@@ -82,17 +82,17 @@ def log(writer: WandbSummaryWriter, locs: dict, width: int = 80, pad: int = 35):
             value = torch.mean(infotensor)
             # log to logger and terminal
             if "/" in key:
-                writer.add_scalar(key, value, locs["num_episodes"])
+                writer.add_scalar(key, value, locs["i"])
                 ep_string += f"""{f'{key}:':>{pad}} {value:.4f}\n"""
             else:
-                writer.add_scalar("Episode/" + key, value, locs["num_episodes"])
+                writer.add_scalar("Episode/" + key, value, locs["i"])
                 ep_string += f"""{f'Mean episode {key}:':>{pad}} {value:.4f}\n"""
     
     # -- Training
     if len(locs["rewbuffer"]) > 0:
         # everything else
-        writer.add_scalar("Eval/mean_reward", statistics.mean(locs["rewbuffer"]), locs["num_episodes"])
-        writer.add_scalar("Eval/mean_episode_length", statistics.mean(locs["lenbuffer"]), locs["num_episodes"])
+        writer.add_scalar("Eval/mean_reward", statistics.mean(locs["rewbuffer"]), locs["i"])
+        writer.add_scalar("Eval/mean_episode_length", statistics.mean(locs["lenbuffer"]), locs["i"])
 
 
 def main():
@@ -154,6 +154,8 @@ def main():
     export_policy_as_onnx(
         ppo_runner.alg.actor_critic, normalizer=ppo_runner.obs_normalizer, path=export_model_dir, filename="policy.onnx"
     )
+    
+    num_steps_per_env = agent_cfg.num_steps_per_env
 
     # reset environment
     obs, _ = env.get_observations()
@@ -172,49 +174,51 @@ def main():
     while simulation_app.is_running():
         # run everything in inference mode
         with torch.inference_mode():
-            actions = policy(obs)
-            obs, rewards, dones, infos = env.step(actions)
+            for _ in range(num_steps_per_env):
+                actions = policy(obs)
+                obs, rewards, dones, infos = env.step(actions)
 
-            if log_dir is not None:
-                cur_reward_sum += rewards
-                cur_episode_length += 1
-                new_ids = (dones > 0).nonzero(as_tuple=False)
-                rewbuffer.extend(cur_reward_sum[new_ids][:, 0].cpu().numpy().tolist())
-                lenbuffer.extend(cur_episode_length[new_ids][:, 0].cpu().numpy().tolist())
-                cur_reward_sum[new_ids] = 0
-                cur_episode_length[new_ids] = 0
+                if log_dir is not None:
+                    cur_reward_sum += rewards
+                    cur_episode_length += 1
+                    new_ids = (dones > 0).nonzero(as_tuple=False)
+                    rewbuffer.extend(cur_reward_sum[new_ids][:, 0].cpu().numpy().tolist())
+                    lenbuffer.extend(cur_episode_length[new_ids][:, 0].cpu().numpy().tolist())
+                    cur_reward_sum[new_ids] = 0
+                    cur_episode_length[new_ids] = 0
 
-                if len(new_ids) > 0:
                     num_episodes += len(new_ids)
                     # Book keeping
                     if "episode" in infos:
                         ep_infos.append(infos["episode"])
                     elif "log" in infos:
                         ep_infos.append(infos["log"])
+                        
+                    step += 1
+                    
+                    # Record video at specified intervals
+                    if args_cli.video and step % args_cli.video_interval == 0:
+                        env.reset()
+                        for _ in range(args_cli.video_length):
+                            with torch.inference_mode():
+                                actions = policy(obs)
+                                obs, _, _, _ = env.step(actions)
 
-                    # Only log infos if there are newly completed episodes
-                    locs = {
-                        "ep_infos": ep_infos,
-                        "rewbuffer": rewbuffer,
-                        "lenbuffer": lenbuffer,
-                        "num_episodes": num_episodes  # or another variable that tracks the current iteration
-                    }
-                    log(writer, locs)
-
-                if num_episodes == 1000:
-                    print(f"Step: {step}, Mean Reward: {statistics.mean(rewbuffer):.4f}, Mean Episode Length: {statistics.mean(lenbuffer):.4f}")
-                    break
-
-            # Record video at specified intervals
-            if args_cli.video and step % args_cli.video_interval == 0:
-                env.reset()
-                for _ in range(args_cli.video_length):
-                    with torch.inference_mode():
-                        actions = policy(obs)
-                        obs, _, _, _ = env.step(actions)
+            # Only log infos if there are newly completed episodes
+            locs = {
+                "ep_infos": ep_infos,
+                "rewbuffer": rewbuffer,
+                "lenbuffer": lenbuffer,
+                "i": step  # or another variable that tracks the current iteration
+            }
+            log(writer, locs)
             
-            step += 1
+            ep_infos.clear()
 
+            if num_episodes >= 2000:
+                print(f"Step: {step}, Mean Reward: {statistics.mean(rewbuffer):.4f}, Mean Episode Length: {statistics.mean(lenbuffer):.4f}")
+                break
+            
     # close the simulator
     env.close()
 
