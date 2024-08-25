@@ -176,9 +176,8 @@ class UniformPose2dCommand(CommandTerm):
                 marker_cfg.prim_path = "/Visuals/Command/pose_current"
                 self.curr_pose_visualizer = VisualizationMarkers(marker_cfg)
                 
-                # White arrow connecting the robot to the target
+                # White arrow connecting the robot to the target, the scale will be updated in the callback
                 marker_cfg = WHITE_ARROW_X_MARKER_CFG.copy()
-                marker_cfg.markers["arrow"].scale = (0.02, 0.02, 0.8)
                 marker_cfg.prim_path = "/Visuals/Command/pose_connection"
                 self.connection_visualizer = VisualizationMarkers(marker_cfg)
                 
@@ -219,7 +218,7 @@ class UniformPose2dCommand(CommandTerm):
         
         # Visualize the white arrow connecting the robot to the target position
         direction_vector = _pos_command_w - base_pos_w  # Vector from robot to target
-        direction_vector = direction_vector / torch.norm(direction_vector, dim=-1, keepdim=True)  # Normalize direction
+        distance = torch.norm(direction_vector, dim=-1, keepdim=True)  # Compute distance
         yaw_angles = torch.atan2(direction_vector[:, 1], direction_vector[:, 0])
     
         # Compute orientation using the provided quat_from_euler_xyz function
@@ -228,9 +227,14 @@ class UniformPose2dCommand(CommandTerm):
             pitch=torch.zeros_like(yaw_angles), # No pitch
             yaw=yaw_angles                      # Yaw angle derived from direction vector
         )
+        
+        # Scale the arrow to span the distance between robot and target
+        connection_scales = torch.cat([distance, torch.ones_like(distance), torch.ones_like(distance)], dim=-1)
+        
         self.connection_visualizer.visualize(
             translations=(base_pos_w + _pos_command_w) / 2,  # Midpoint between robot and target
-            orientations=connection_orientations
+            orientations=connection_orientations,
+            scales=connection_scales
         )
 
 
