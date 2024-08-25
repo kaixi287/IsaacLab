@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 from omni.isaac.lab.assets import Articulation
 from omni.isaac.lab.managers import CommandTerm
 from omni.isaac.lab.markers import VisualizationMarkers
-from omni.isaac.lab.markers.config import GREEN_ARROW_X_MARKER_CFG, BLUE_ARROW_X_MARKER_CFG, CURR_POSITION_MARKER_CFG, GREEN_SPHERE_MARKER_CFG
+from omni.isaac.lab.markers.config import GREEN_ARROW_X_MARKER_CFG, BLUE_ARROW_X_MARKER_CFG, CURR_POSITION_MARKER_CFG, GREEN_SPHERE_MARKER_CFG, WHITE_ARROW_X_MARKER_CFG
 from omni.isaac.lab.terrains import TerrainImporter
 from omni.isaac.lab.utils.math import quat_from_euler_xyz, quat_rotate_inverse, wrap_to_pi, yaw_quat
 
@@ -175,13 +175,22 @@ class UniformPose2dCommand(CommandTerm):
                 marker_cfg.markers["arrow"].scale = (0.2, 0.2, 0.8)
                 marker_cfg.prim_path = "/Visuals/Command/pose_current"
                 self.curr_pose_visualizer = VisualizationMarkers(marker_cfg)
+                
+                # White arrow connecting the robot to the target
+                marker_cfg = WHITE_ARROW_X_MARKER_CFG.copy()
+                marker_cfg.markers["arrow"].scale = (0.02, 0.02, 0.8)
+                marker_cfg.prim_path = "/Visuals/Command/pose_connection"
+                self.connection_visualizer = VisualizationMarkers(marker_cfg)
+                
             # set their visibility to true
             self.arrow_goal_visualizer.set_visibility(True)
             self.curr_pose_visualizer.set_visibility(True)
+            self.connection_visualizer.set_visibility(True)
         else:
             if hasattr(self, "arrow_goal_visualizer"):
                 self.arrow_goal_visualizer.set_visibility(False)
                 self.curr_pose_visualizer.set_visibility(False)
+                self.connection_visualizer.set_visibility(False)
 
     def _debug_vis_callback(self, event):
         # update the box marker
@@ -207,7 +216,22 @@ class UniformPose2dCommand(CommandTerm):
         base_quat_w = self.robot.data.root_quat_w
         # display markers
         self.curr_pose_visualizer.visualize(base_pos_w, base_quat_w)
-
+        
+        # Visualize the white arrow connecting the robot to the target position
+        direction_vector = _pos_command_w - base_pos_w  # Vector from robot to target
+        direction_vector = direction_vector / torch.norm(direction_vector, dim=-1, keepdim=True)  # Normalize direction
+        yaw_angles = torch.atan2(direction_vector[:, 1], direction_vector[:, 0])
+    
+        # Compute orientation using the provided quat_from_euler_xyz function
+        connection_orientations = quat_from_euler_xyz(
+            roll=torch.zeros_like(yaw_angles),  # No roll
+            pitch=torch.zeros_like(yaw_angles), # No pitch
+            yaw=yaw_angles                      # Yaw angle derived from direction vector
+        )
+        self.connection_visualizer.visualize(
+            translations=(base_pos_w + _pos_command_w) / 2,  # Midpoint between robot and target
+            orientations=connection_orientations
+        )
 
 
 class TerrainBasedPose2dCommand(UniformPose2dCommand):
