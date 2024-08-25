@@ -141,7 +141,7 @@ def main():
     num_episodes_recorded = 0
 
     # simulate environment
-    while simulation_app.is_running() and num_episodes_recorded < 50 * num_envs:
+    while simulation_app.is_running():
         # run everything in inference mode
         with torch.inference_mode():
             actions = policy(obs)
@@ -180,10 +180,6 @@ def main():
                 if test_symmetry:
                     string += f", Mean Symmetry Loss (So Far over {len(episode_symmetry_loss)} episodes): {np.mean(episode_symmetry_loss)}"
                 print(string)
-
-            #     # Exit after recording the first episode for all environments
-            #     if num_episodes_recorded >= num_envs:
-            #         break
 
             # Record video at specified intervals
             if args_cli.video and step % args_cli.video_interval == 0:
