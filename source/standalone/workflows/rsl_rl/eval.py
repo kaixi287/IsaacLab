@@ -8,6 +8,7 @@
 """Launch Isaac Sim Simulator first."""
 
 import argparse
+import glob
 
 from omni.isaac.lab.app import AppLauncher
 
@@ -16,9 +17,6 @@ import cli_args  # isort: skip
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Train an RL agent with RSL-RL.")
-parser.add_argument("--video", action="store_true", default=False, help="Record videos during evaluation.")
-parser.add_argument("--video_length", type=int, default=1000, help="Length of the recorded video (in steps).")
-parser.add_argument("--video_interval", type=int, default=50, help="Interval between video recordings (in steps).")
 parser.add_argument("--cpu", action="store_true", default=False, help="Use CPU pipeline.")
 parser.add_argument(
     "--disable_fabric", action="store_true", default=False, help="Disable fabric and use USD I/O operations."
@@ -34,9 +32,6 @@ cli_args.add_rsl_rl_args(parser)
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
-# always enable cameras to record video
-if args_cli.video:
-    args_cli.enable_cameras = True
 
 # launch omniverse app
 app_launcher = AppLauncher(args_cli)
@@ -79,7 +74,8 @@ def log(writer: WandbSummaryWriter, locs: dict, width: int = 80, pad: int = 35):
                 if len(ep_info[key].shape) == 0:
                     ep_info[key] = ep_info[key].unsqueeze(0)
                 infotensor = torch.cat((infotensor, ep_info[key].to(infotensor.device)))
-            value = torch.mean(infotensor)
+            # value = torch.mean(infotensor)
+            value = torch.sum(infotensor)/locs["num_episodes"]
             # log to logger and terminal
             if "/" in key:
                 writer.add_scalar(key, value, locs["i"])
@@ -93,6 +89,7 @@ def log(writer: WandbSummaryWriter, locs: dict, width: int = 80, pad: int = 35):
         # everything else
         writer.add_scalar("Eval/mean_reward", statistics.mean(locs["rewbuffer"]), locs["i"])
         writer.add_scalar("Eval/mean_episode_length", statistics.mean(locs["lenbuffer"]), locs["i"])
+        writer.add_scalar("Eval/success_rate", locs["success_count"]/locs["num_episodes"], locs["i"])
 
 
 def main():
@@ -113,22 +110,12 @@ def main():
     # sys.stdout = open(log_file, 'a')
     # sys.stderr = open(log_file, 'a')
     print(f"[INFO] Loading experiment from directory: {log_root_path}")
-    resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
-    print(f"[INFO]: Loading model checkpoint from: {resume_path}")
+    resume_paths = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
 
     # create isaac environment
-    env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
+    env = gym.make(args_cli.task, cfg=env_cfg, render_mode=None)
     eval_log_dir = os.path.join(log_root_path, agent_cfg.load_run, "evaluation")
-    # wrap for video recording
-    if args_cli.video:
-        video_kwargs = {
-            "video_folder": os.path.join(eval_log_dir, "videos"),
-            "step_trigger": lambda step: step % args_cli.video_interval == 0,
-            "video_length": args_cli.video_length,
-            "disable_logger": True,
-        }
-        print("[INFO] Recording videos during evaluation.")
-        env = gym.wrappers.RecordVideo(env, **video_kwargs)
+    
     # wrap around environment for rsl-rl
     env = RslRlVecEnvWrapper(env)
 
@@ -137,44 +124,41 @@ def main():
         writer = WandbSummaryWriter(log_dir=log_dir, flush_secs=10, cfg=agent_cfg.to_dict())
     else:
         log_dir = None
-
-    # load previously trained model
-    ppo_runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
-    ppo_runner.load(resume_path)
-    print(f"[INFO]: Loading model checkpoint from: {resume_path}")
-
-    # obtain the trained policy for inference
-    policy = ppo_runner.get_inference_policy(device=env.unwrapped.device)
-
-    # export policy to onnx/jit
-    export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
-    export_policy_as_jit(
-        ppo_runner.alg.actor_critic, ppo_runner.obs_normalizer, path=export_model_dir, filename="policy.pt"
-    )
-    export_policy_as_onnx(
-        ppo_runner.alg.actor_critic, normalizer=ppo_runner.obs_normalizer, path=export_model_dir, filename="policy.onnx"
-    )
     
-    num_steps_per_env = agent_cfg.num_steps_per_env
-
-    # reset environment
-    obs, _ = env.get_observations()
-
-    # metrics
-    # Book keeping
-    step = 0
-    num_episodes = 0
-    ep_infos = []
-    rewbuffer = deque(maxlen=1000)
-    lenbuffer = deque(maxlen=1000)
-    cur_reward_sum = torch.zeros(env.num_envs, dtype=torch.float, device=obs.device)
-    cur_episode_length = torch.zeros(env.num_envs, dtype=torch.float, device=obs.device)
-
-    # simulate environment
-    while simulation_app.is_running():
-        # run everything in inference mode
+    for resume_path in resume_paths:
+        checkpoint_name = os.path.basename(resume_path)
+        print(f"[INFO]: Loading model checkpoint from: {resume_path}")
+        
+        iter = int(checkpoint_name.split('_')[1].split('.')[0])
+        
         with torch.inference_mode():
-            for _ in range(num_steps_per_env):
+            # set seed of the environment
+            env.seed(agent_cfg.seed)
+            env.reset()
+
+        # load the checkpoint
+        ppo_runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
+        ppo_runner.load(resume_path)
+
+        # obtain the trained policy for inference
+        policy = ppo_runner.get_inference_policy(device=env.unwrapped.device)
+
+        # reset environment
+        obs, _ = env.get_observations()
+
+        # metrics
+        success_count = 0
+        num_episodes = 0
+        ep_infos = []
+        rewbuffer = deque(maxlen=1000)
+        lenbuffer = deque(maxlen=1000)
+        cur_reward_sum = torch.zeros(env.num_envs, dtype=torch.float, device=obs.device)
+        cur_episode_length = torch.zeros(env.num_envs, dtype=torch.float, device=obs.device)
+
+        # simulate environment
+        while num_episodes < 1000:
+            # run everything in inference mode
+            with torch.inference_mode():
                 actions = policy(obs)
                 obs, rewards, dones, infos = env.step(actions)
 
@@ -187,40 +171,36 @@ def main():
                     cur_reward_sum[new_ids] = 0
                     cur_episode_length[new_ids] = 0
 
-                    num_episodes += len(new_ids)
-                    # Book keeping
-                    if "episode" in infos:
-                        ep_infos.append(infos["episode"])
-                    elif "log" in infos:
-                        ep_infos.append(infos["log"])
-                        
-                    step += 1
-                    
-                    # Record video at specified intervals
-                    if args_cli.video and step % args_cli.video_interval == 0:
-                        env.reset()
-                        for _ in range(args_cli.video_length):
-                            with torch.inference_mode():
-                                actions = policy(obs)
-                                obs, _, _, _ = env.step(actions)
+                    num_episodes += new_ids.numel()
+                
+                    if new_ids.numel() > 0:
+                        success_count += infos["success_count"]
+                        # Book keeping
+                        if "episode" in infos:
+                            ep_infos.append(infos["episode"])
+                        elif "log" in infos:
+                            ep_infos.append(infos["log"])
+        
+        if iter==0:
+            iter = 1
+                                    
+        # Log infos
+        locs = {
+            "ep_infos": ep_infos,
+            "rewbuffer": rewbuffer,
+            "lenbuffer": lenbuffer,
+            "success_count": success_count,
+            "num_episodes": num_episodes,
+            "i": iter
+        }
+        log(writer, locs)
+        print(f"Checkpoint: {checkpoint_name}, Collected episodes: {num_episodes}, Mean Reward: {statistics.mean(rewbuffer):.4f}, Mean Episode Length: {statistics.mean(lenbuffer):.4f}, Success Rate: {success_count / num_episodes:.4f}")
 
-            # Only log infos if there are newly completed episodes
-            locs = {
-                "ep_infos": ep_infos,
-                "rewbuffer": rewbuffer,
-                "lenbuffer": lenbuffer,
-                "i": step  # or another variable that tracks the current iteration
-            }
-            log(writer, locs)
-            
-            ep_infos.clear()
-
-            if num_episodes >= 2000:
-                print(f"Step: {step}, Mean Reward: {statistics.mean(rewbuffer):.4f}, Mean Episode Length: {statistics.mean(lenbuffer):.4f}")
-                break
-            
     # close the simulator
     env.close()
+    
+    if log_dir is not None:
+        writer.stop()
 
 
 if __name__ == "__main__":
