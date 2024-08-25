@@ -154,15 +154,15 @@ class EventCfg:
         },
     )
 
-    # block_joint = EventTerm(
-    #     func=mdp.block_joint,
-    #     mode="reset",
-    #     params={
-    #         "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-    #         "joint_to_block": [0, 4, 8], # Index of joint to disable
-    #         "prob_no_block": 0.2,
-    #     },
-    # )
+    block_joint = EventTerm(
+        func=mdp.block_joint,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+            "joint_to_block": -1, # Index of joint to disable
+            "prob_no_block": 0.2,
+        },
+    )
 
 @configclass
 class RewardsCfg:
@@ -219,12 +219,12 @@ class RewardsCfg:
         weight=-0.00001,
         params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*"), "threshold": 700.0},
     )
-    stand_still = RewTerm(func=mdp.stand_still, weight=-0.1, params={"duration": 1.0, "command_name": "pose_command"})
-    feet_balance = RewTerm(
-        func=mdp.feet_balance,
-        weight=-1000,
-        params={"duration": 1.0, "command_name": "pose_command", "asset_cfg": SceneEntityCfg("robot", body_names=[".*_FOOT"])}
-    )
+    stand_still = RewTerm(func=mdp.stand_still_pose, weight=-0.05, params={"duration": 1.0, "command_name": "pose_command"})
+    # feet_balance = RewTerm(
+    #     func=mdp.feet_balance,
+    #     weight=-1000,
+    #     params={"duration": 1.0, "command_name": "pose_command", "asset_cfg": SceneEntityCfg("robot", body_names=[".*_FOOT"])}
+    # )
 
 
 @configclass

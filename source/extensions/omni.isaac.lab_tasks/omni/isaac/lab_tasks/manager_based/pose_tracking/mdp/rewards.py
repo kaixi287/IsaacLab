@@ -27,20 +27,6 @@ def _command_duration_mask(env: ManagerBasedRLEnv, duration: float, command_name
     mask = command.time_left <= duration
     return mask / duration
 
-# def final_position_reward(env: ManagerBasedRLEnv, duration: float, command_name: str) -> torch.Tensor:
-#     """Reward for reaching the target location."""
-#     command = env.command_manager.get_command(command_name)
-#     distance = torch.norm(command[:, :2], dim=1)
-    
-#     return 1 / duration * (1. /(1. + torch.square(distance))) * _command_duration_mask(env, duration, command_name)
-
-# def final_heading_reward(env: ManagerBasedRLEnv, duration: float, command_name: str) -> torch.Tensor:
-#     """Reward for maintaining the desired heading."""
-#     command = env.command_manager.get_command(command_name)
-#     heading_error = command[:, 3].abs()
-
-#     return 1 / duration * (1. /(1. + torch.square(heading_error))) * _command_duration_mask(env, duration, command_name)
-
 def tracking_pos(env: ManagerBasedRLEnv, duration: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
     command = env.command_manager.get_term(command_name)
     
@@ -193,8 +179,8 @@ def feet_balance(env: ManagerBasedRLEnv, duration: float, command_name: str, ass
     
     command = env.command_manager.get_term(command_name)
     should_stand = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1) <= 0.1
-    # should_stand &= torch.abs(command.heading_command_w - asset.data.heading_w) < 0.5
-
+    # if command.cfg.include_heading:
+    #     should_stand &= torch.abs(command.heading_command_w - asset.data.heading_w) < 0.5
     return imbalance * should_stand * _command_duration_mask(env, duration, command_name)
 
 
@@ -315,7 +301,8 @@ def stand_still_pose(env: ManagerBasedRLEnv, duration: float, command_name: str,
     
     asset: Articulation = env.scene[asset_cfg.name]
     should_stand = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1) <= 0.1
-    # should_stand &= torch.abs(command.heading_command_w - asset.data.heading_w) < 0.5
+    # if command.cfg.include_heading:
+    #     should_stand &= torch.abs(command.heading_command_w - asset.data.heading_w) < 0.5
     return torch.sum(torch.square(asset.data.joint_pos - asset.data.default_joint_pos), dim=1) * should_stand * _command_duration_mask(env, duration, command_name)
 
 def stand_still(env: ManagerBasedRLEnv, duration: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
@@ -323,6 +310,7 @@ def stand_still(env: ManagerBasedRLEnv, duration: float, command_name: str, asse
     
     asset: Articulation = env.scene[asset_cfg.name]
     should_stand = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1) <= 0.1
-    # should_stand &= torch.abs(command.heading_command_w - asset.data.heading_w) < 0.5
+    # if command.cfg.include_heading:
+    #     should_stand &= torch.abs(command.heading_command_w - asset.data.heading_w) < 0.5
     return torch.sum(torch.square(asset.data.joint_vel[:, asset_cfg.joint_ids]), dim=1) * should_stand * _command_duration_mask(env, duration, command_name)
 
