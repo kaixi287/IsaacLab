@@ -229,7 +229,7 @@ class UniformPose2dCommand(CommandTerm):
         )
         
         # Scale the arrow to span the distance between robot and target
-        connection_scales = torch.cat([distance, torch.ones_like(distance), torch.ones_like(distance)], dim=-1)
+        connection_scales = torch.cat([torch.full_like(distance, 0.03),torch.full_like(distance, 0.03), distance], dim=-1)
         
         self.connection_visualizer.visualize(
             translations=(base_pos_w + _pos_command_w) / 2,  # Midpoint between robot and target
