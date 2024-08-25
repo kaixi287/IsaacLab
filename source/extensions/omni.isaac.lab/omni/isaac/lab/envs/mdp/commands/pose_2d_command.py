@@ -54,12 +54,16 @@ class UniformPose2dCommand(CommandTerm):
         # crete buffers to store the command
         # -- commands: (x, y, z, heading)
         self._pos_command_w = torch.zeros(self.num_envs, 3, device=self.device)
-        self._heading_command_w = torch.zeros(self.num_envs, device=self.device)
         self.pos_command_b = torch.zeros_like(self._pos_command_w)
-        self.heading_command_b = torch.zeros_like(self._heading_command_w)
+        self._heading_command_w = torch.zeros(self.num_envs, device=self.device)
+        
         # -- metrics
         self.metrics["error_pos"] = torch.zeros(self.num_envs, device=self.device)
-        self.metrics["error_heading"] = torch.zeros(self.num_envs, device=self.device)
+        
+        # create buffers for heading command
+        if self.cfg.include_heading:
+            self.heading_command_b = torch.zeros_like(self._heading_command_w)
+            self.metrics["error_heading"] = torch.zeros(self.num_envs, device=self.device)
 
         # torch.manual_seed(42)
 
@@ -96,7 +100,8 @@ class UniformPose2dCommand(CommandTerm):
     def _update_metrics(self):
         # logs data
         self.metrics["error_pos_2d"] = torch.norm(self._pos_command_w[:, :2] - self.robot.data.root_pos_w[:, :2], dim=1)
-        self.metrics["error_heading"] = torch.abs(wrap_to_pi(self._heading_command_w - self.robot.data.heading_w))
+        if self.cfg.include_heading:
+            self.metrics["error_heading"] = torch.abs(wrap_to_pi(self._heading_command_w - self.robot.data.heading_w))
 
     def _resample_command(self, env_ids: Sequence[int]):
         # obtain env origins for the environments
