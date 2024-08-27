@@ -178,6 +178,7 @@ class UniformPose2dCommand(CommandTerm):
                 
                 # White arrow connecting the robot to the target, the scale will be updated in the callback
                 marker_cfg = WHITE_ARROW_X_MARKER_CFG.copy()
+                marker_cfg.markers["arrow"].scale = (1.0, 1.0, 1.0)
                 marker_cfg.prim_path = "/Visuals/Command/pose_connection"
                 self.connection_visualizer = VisualizationMarkers(marker_cfg)
                 
@@ -229,10 +230,10 @@ class UniformPose2dCommand(CommandTerm):
         )
         
         # Scale the arrow to span the distance between robot and target
-        connection_scales = torch.cat([torch.full_like(distance, 0.03),torch.full_like(distance, 0.03), distance], dim=-1)
+        connection_scales = torch.cat([distance, torch.full_like(distance, 0.03),torch.full_like(distance, 0.03)], dim=-1)
         
         self.connection_visualizer.visualize(
-            translations=(base_pos_w + _pos_command_w) / 2,  # Midpoint between robot and target
+            translations=base_pos_w + (_pos_command_w - base_pos_w) / 3,  # Midpoint between robot and target
             orientations=connection_orientations,
             scales=connection_scales
         )
