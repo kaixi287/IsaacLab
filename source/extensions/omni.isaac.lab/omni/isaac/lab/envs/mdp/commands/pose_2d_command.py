@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 from omni.isaac.lab.assets import Articulation
 from omni.isaac.lab.managers import CommandTerm
 from omni.isaac.lab.markers import VisualizationMarkers
-from omni.isaac.lab.markers.config import GREEN_ARROW_X_MARKER_CFG, BLUE_ARROW_X_MARKER_CFG, CURR_POSITION_MARKER_CFG, GREEN_SPHERE_MARKER_CFG, WHITE_ARROW_X_MARKER_CFG
+from omni.isaac.lab.markers.config import GREEN_ARROW_X_MARKER_CFG, BLUE_ARROW_X_MARKER_CFG, ORANGE_SPHERE_MARKER_CFG, GREEN_SPHERE_MARKER_CFG, WHITE_ARROW_X_MARKER_CFG
 from omni.isaac.lab.terrains import TerrainImporter
 from omni.isaac.lab.utils.math import quat_from_euler_xyz, quat_rotate_inverse, wrap_to_pi, yaw_quat
 
@@ -166,7 +166,7 @@ class UniformPose2dCommand(CommandTerm):
                     marker_cfg.markers["arrow"].scale = (0.2, 0.2, 0.8)
                 else:
                     # Use sphere marker for the target position without heading
-                    marker_cfg = GREEN_SPHERE_MARKER_CFG.copy()
+                    marker_cfg = ORANGE_SPHERE_MARKER_CFG.copy()
                 marker_cfg.prim_path = "/Visuals/Command/pose_goal"
                 self.arrow_goal_visualizer = VisualizationMarkers(marker_cfg)
                 # -- current base pose
@@ -233,7 +233,7 @@ class UniformPose2dCommand(CommandTerm):
         connection_scales = torch.cat([distance, torch.full_like(distance, 0.03),torch.full_like(distance, 0.03)], dim=-1)
         
         self.connection_visualizer.visualize(
-            translations=base_pos_w + (_pos_command_w - base_pos_w) / 3,  # Midpoint between robot and target
+            translations=base_pos_w + (_pos_command_w - base_pos_w) * 0.25,  # Midpoint between robot and target
             orientations=connection_orientations,
             scales=connection_scales
         )

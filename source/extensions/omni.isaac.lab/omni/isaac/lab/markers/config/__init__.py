@@ -154,15 +154,6 @@ PINK_JOINT_MARKER_CFG = VisualizationMarkersCfg(
     }
 )
 
-ORANGE_JOINT_MARKER_CFG = VisualizationMarkersCfg(
-    markers={
-        "blocked_joints": sim_utils.SphereCfg(
-            radius=0.1,
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.25, 0.0)),  # RGB for orange
-        ),
-    }
-)
-
 GREEN_JOINT_MARKER_CFG = VisualizationMarkersCfg(
     markers={
         "blocked_joints": sim_utils.SphereCfg(
@@ -188,6 +179,15 @@ GREEN_SPHERE_MARKER_CFG = VisualizationMarkersCfg(
         "target_position": sim_utils.SphereCfg(
             radius=0.1,
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 1.0, 0.0)),
+        ),
+    }
+)
+
+ORANGE_SPHERE_MARKER_CFG = VisualizationMarkersCfg(
+    markers={
+        "sphere": sim_utils.SphereCfg(
+            radius=0.1,
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.15, 0.0)),  # RGB for orange
         ),
     }
 )

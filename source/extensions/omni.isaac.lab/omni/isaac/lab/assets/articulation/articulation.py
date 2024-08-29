@@ -25,7 +25,7 @@ import omni.isaac.lab.utils.string as string_utils
 from omni.isaac.lab.actuators import ActuatorBase, ActuatorBaseCfg, ImplicitActuator
 
 from omni.isaac.lab.markers import VisualizationMarkers
-from omni.isaac.lab.markers.config import YELLOW_JOINT_MARKER_CFG, GREEN_JOINT_MARKER_CFG, PINK_JOINT_MARKER_CFG, ORANGE_JOINT_MARKER_CFG
+from omni.isaac.lab.markers.config import YELLOW_JOINT_MARKER_CFG, GREEN_JOINT_MARKER_CFG, PINK_JOINT_MARKER_CFG
 
 from ..rigid_object import RigidObject
 from .articulation_data import ArticulationData
@@ -225,7 +225,7 @@ class Articulation(RigidObject):
             # Create pink markers for in-distribution joints
             if self.in_distribution_joint_ids:
                 if not hasattr(self, "pink_joint_marker"):
-                    pink_marker_cfg = PINK_JOINT_MARKER_CFG.copy()
+                    pink_marker_cfg = GREEN_JOINT_MARKER_CFG.copy()
                     pink_marker_cfg.prim_path = "/Visuals/Joints/Pink"
                     self.pink_joint_marker = VisualizationMarkers(pink_marker_cfg)
                 self.pink_joint_marker.set_visibility(True)
