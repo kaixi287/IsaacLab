@@ -39,6 +39,9 @@ def add_rsl_rl_args(parser: argparse.ArgumentParser):
     arg_group.add_argument(
         "--log_run_name", type=str, default=None, help="Name of the logging run when using wandb or neptune."
     )
+    arg_group.add_argument(
+        "--actor_critic_class_name", type=str, default=None, help="Name of the actor critic class."
+    )
 
 
 def parse_rsl_rl_cfg(task_name: str, args_cli: argparse.Namespace) -> RslRlOnPolicyRunnerCfg:
@@ -75,5 +78,7 @@ def parse_rsl_rl_cfg(task_name: str, args_cli: argparse.Namespace) -> RslRlOnPol
         rslrl_cfg.neptune_project = args_cli.log_project_name
     if rslrl_cfg.logger == "wandb" and args_cli.log_run_name:
         rslrl_cfg.wandb_run_name = args_cli.log_run_name
+    if args_cli.actor_critic_class_name is not None:
+        rslrl_cfg.policy.class_name = args_cli.actor_critic_class_name
 
     return rslrl_cfg
