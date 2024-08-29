@@ -36,6 +36,9 @@ def add_rsl_rl_args(parser: argparse.ArgumentParser):
     arg_group.add_argument(
         "--log_project_name", type=str, default=None, help="Name of the logging project when using wandb or neptune."
     )
+    arg_group.add_argument(
+        "--log_run_name", type=str, default=None, help="Name of the logging run when using wandb or neptune."
+    )
 
 
 def parse_rsl_rl_cfg(task_name: str, args_cli: argparse.Namespace) -> RslRlOnPolicyRunnerCfg:
@@ -70,5 +73,7 @@ def parse_rsl_rl_cfg(task_name: str, args_cli: argparse.Namespace) -> RslRlOnPol
     if rslrl_cfg.logger in {"wandb", "neptune"} and args_cli.log_project_name:
         rslrl_cfg.wandb_project = args_cli.log_project_name
         rslrl_cfg.neptune_project = args_cli.log_project_name
+    if rslrl_cfg.logger == "wandb" and args_cli.log_run_name:
+        rslrl_cfg.wandb_run_name = args_cli.log_run_name
 
     return rslrl_cfg

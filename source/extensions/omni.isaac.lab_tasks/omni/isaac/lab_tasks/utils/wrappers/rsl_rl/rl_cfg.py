@@ -132,6 +132,9 @@ class RslRlOnPolicyRunnerCfg:
 
     wandb_project: str = "isaaclab"
     """The wandb project name. Default is "isaaclab"."""
+    
+    wandb_run_name: str | None = None
+    """The wandb run name. Default is None."""
 
     ##
     # Loading parameters
