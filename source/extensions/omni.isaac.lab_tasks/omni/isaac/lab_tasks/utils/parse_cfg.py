@@ -152,7 +152,7 @@ def parse_env_cfg(
 
 def get_checkpoint_path(
     log_path: str, run_dir: str = ".*", checkpoint: str = ".*", other_dirs: list[str] = None, sort_alpha: bool = True
-) -> str:
+) -> str | list[str]:
     """Get path to the model checkpoint in input directory.
 
     The checkpoint file is resolved as: ``<log_path>/<run_dir>/<*other_dirs>/<checkpoint>``, where the
@@ -206,6 +206,7 @@ def get_checkpoint_path(
     # sort alphabetically while ensuring that *_10 comes after *_9
     model_checkpoints.sort(key=lambda m: f"{m:0>15}")
     # get latest matched checkpoint file
-    checkpoint_file = model_checkpoints[-1]
+    # checkpoint_file = model_checkpoints[-1]
 
-    return os.path.join(run_path, checkpoint_file)
+    # return os.path.join(run_path, checkpoint_file)
+    return [os.path.join(run_path, checkpoint_file) for checkpoint_file in model_checkpoints]

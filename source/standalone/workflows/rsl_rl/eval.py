@@ -25,7 +25,6 @@ parser.add_argument("--num_envs", type=int, default=None, help="Number of enviro
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
 parser.add_argument("--log_root_path", type=str, default=None, help="Relative path of log root directory.")
-parser.add_argument("--test_symmetry", action="store_true", default=False, help="Whether to test symmetry augmentation.")
 
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
@@ -90,6 +89,8 @@ def log(writer: WandbSummaryWriter, locs: dict, width: int = 80, pad: int = 35):
         writer.add_scalar("Eval/mean_reward", statistics.mean(locs["rewbuffer"]), locs["i"])
         writer.add_scalar("Eval/mean_episode_length", statistics.mean(locs["lenbuffer"]), locs["i"])
         writer.add_scalar("Eval/success_rate", locs["success_count"]/locs["num_episodes"], locs["i"])
+        writer.add_scalar("Eval/tracking_failure_rate", locs["tracking_failure_count"]/locs["num_episodes"], locs["i"])
+        writer.add_scalar("Eval/early_termination_rate", locs["early_termination_count"]/locs["num_episodes"], locs["i"])
 
 
 def main():
@@ -148,6 +149,8 @@ def main():
 
         # metrics
         success_count = 0
+        tracking_failure_count = 0
+        early_termination_count = 0
         num_episodes = 0
         ep_infos = []
         rewbuffer = deque(maxlen=1000)
@@ -175,6 +178,8 @@ def main():
                 
                     if new_ids.numel() > 0:
                         success_count += infos["success_count"]
+                        tracking_failure_count = infos["tracking_failure_count"]
+                        early_termination_count = infos["early_termination_count"]
                         # Book keeping
                         if "episode" in infos:
                             ep_infos.append(infos["episode"])
@@ -190,6 +195,8 @@ def main():
             "rewbuffer": rewbuffer,
             "lenbuffer": lenbuffer,
             "success_count": success_count,
+            "tracking_failure_count": tracking_failure_count,
+            "early_termination_count": early_termination_count,
             "num_episodes": num_episodes,
             "i": iter
         }

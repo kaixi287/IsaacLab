@@ -76,7 +76,7 @@ def parse_rsl_rl_cfg(task_name: str, args_cli: argparse.Namespace) -> RslRlOnPol
     if rslrl_cfg.logger in {"wandb", "neptune"} and args_cli.log_project_name:
         rslrl_cfg.wandb_project = args_cli.log_project_name
         rslrl_cfg.neptune_project = args_cli.log_project_name
-    if rslrl_cfg.logger == "wandb" and args_cli.log_run_name:
+    if rslrl_cfg.logger == "wandb" and args_cli.log_run_name is not None:
         rslrl_cfg.wandb_run_name = args_cli.log_run_name
     if args_cli.actor_critic_class_name is not None:
         rslrl_cfg.policy.class_name = args_cli.actor_critic_class_name
