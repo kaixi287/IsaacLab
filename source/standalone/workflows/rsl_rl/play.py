@@ -142,9 +142,10 @@ def main():
         
     step = 0
     num_episodes_recorded = 0
+    recorded_videos = 0
 
     # simulate environment
-    while simulation_app.is_running():
+    while recorded_videos < 1:
         # run everything in inference mode
         with torch.inference_mode():
             actions = policy(obs)
@@ -191,6 +192,7 @@ def main():
                     with torch.inference_mode():
                         actions = policy(obs)
                         obs, _, _, _ = env.step(actions)
+                recorded_videos += 1
             
             step += 1
 
