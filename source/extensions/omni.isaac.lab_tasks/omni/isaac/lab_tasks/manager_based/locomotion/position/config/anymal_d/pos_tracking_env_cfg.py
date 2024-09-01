@@ -23,7 +23,7 @@ from omni.isaac.lab.utils import configclass
 from omni.isaac.lab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
 from omni.isaac.lab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 
-import omni.isaac.lab_tasks.manager_based.pose_tracking.mdp as mdp
+import omni.isaac.lab_tasks.manager_based.locomotion.position.mdp as mdp
 import omni.isaac.lab_tasks.manager_based.navigation.mdp as mdp_nav
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.anymal_d.flat_env_cfg import AnymalDFlatEnvCfg
 

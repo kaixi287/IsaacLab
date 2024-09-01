@@ -61,7 +61,7 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
     export_policy_as_onnx,
 )
 if args_cli.test_symmetry:
-    from omni.isaac.lab_tasks.manager_based.pose_tracking.config.anymal_d.symmetry import get_symmetric_states
+    from omni.isaac.lab_tasks.manager_based.locomotion.position.config.anymal_d.symmetry import get_symmetric_states
 
 
 def main():
