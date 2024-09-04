@@ -220,6 +220,12 @@ class RewardsCfg:
         params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*"), "threshold": 700.0},
     )
     stand_still = RewTerm(func=mdp.stand_still_pose, weight=-0.05, params={"duration": 1.0, "command_name": "pose_command"})
+    # -- reward for time efficiency
+    time_efficiency_reward = RewTerm(
+        func=mdp.time_efficiency_reward,
+        weight=2.0,
+        params={"command_name": "pose_command"}
+    )
     # feet_balance = RewTerm(
     #     func=mdp.feet_balance,
     #     weight=-1000,
@@ -251,7 +257,13 @@ class TerminationsCfg:
 class CurriculumCfg:
     """Curriculum terms for the MDP."""
 
-    pass
+    # remove_move_in_direction_reward = CurrTerm(
+    #     func=mdp.modify_reward_weight, params={"term_name": "move_in_direction", "weight": 0.0, "num_steps": 300*48}
+    # )
+    remove_move_in_direction_reward = CurrTerm(
+        func=mdp.modify_reward_weight_on_threshold, params={"term_name": "move_in_direction", "weight": 0.0, "ref_term_name": "tracking_pos", "threshold": 0.5}
+    )
+    # pass
 
 
 ##
