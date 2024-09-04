@@ -197,7 +197,7 @@ class RewardsCfg:
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)
     
     dont_wait = RewTerm(func=mdp.dont_wait, weight=-1.0, params={"min_vel": 0.2, "command_name": "pose_command"})
-    # move_in_direction = RewTerm(func=mdp.move_in_direction, weight=1.0, params={"command_name": "pose_command"}) 
+    move_in_direction = RewTerm(func=mdp.move_in_direction, weight=1.0, params={"command_name": "pose_command"}) 
     
     # parkour tuning rewards
     dof_vel_l2 = RewTerm(func=mdp.joint_vel_l2, weight=-0.001)
@@ -206,7 +206,7 @@ class RewardsCfg:
         weight=-0.001,
         params={"asset_cfg": SceneEntityCfg("robot", body_names=["base"])}
     )
-    # collision = RewTerm(func=mdp.collision, weight=-0.5, params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*(THIGH|SHANK)")})
+    collision = RewTerm(func=mdp.collision, weight=-0.5, params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*(THIGH|SHANK)")})
     applied_torque_limits = RewTerm(func=mdp.applied_torque_limits, weight=-0.2)
     dof_vel_limits = RewTerm(func=mdp.joint_vel_limits, weight=-1.0, params={"soft_ratio": 0.9})
     feet_acc = RewTerm(
