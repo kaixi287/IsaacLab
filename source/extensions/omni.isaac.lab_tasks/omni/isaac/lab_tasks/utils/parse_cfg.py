@@ -205,8 +205,5 @@ def get_checkpoint_path(
         raise ValueError(f"No checkpoints in the directory: '{run_path}' match '{checkpoint}'.")
     # sort alphabetically while ensuring that *_10 comes after *_9
     model_checkpoints.sort(key=lambda m: f"{m:0>15}")
-    # get latest matched checkpoint file
-    # checkpoint_file = model_checkpoints[-1]
-
-    # return os.path.join(run_path, checkpoint_file)
+    
     return [os.path.join(run_path, checkpoint_file) for checkpoint_file in model_checkpoints]
