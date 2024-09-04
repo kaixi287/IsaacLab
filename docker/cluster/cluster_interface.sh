@@ -179,6 +179,8 @@ case $command in
         # Sync Isaac Lab code
         echo "[INFO] Syncing Isaac Lab code..."
         rsync -rh  --exclude="*.git*" --filter=':- .dockerignore'  /$SCRIPT_DIR/../.. $CLUSTER_LOGIN:$CLUSTER_ISAACLAB_DIR
+        echo "[INFO] Syncing rsl_rl code..."
+        rsync -rh  --exclude="*.git*" --filter=':- .dockerignore'  /$SCRIPT_DIR/../../../rsl_rl/ $CLUSTER_LOGIN:$CLUSTER_RSL_RL_DIR
         # execute job script
         echo "[INFO] Executing job script..."
         # check whether the second argument is a profile or a job argument

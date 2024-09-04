@@ -48,6 +48,7 @@ touch "$CLUSTER_ISAACLAB_DIR/logs/.keep"
 
 # copy the temporary isaaclab directory with the latest changes to the compute node
 cp -r $1 $TMPDIR
+cp -r $CLUSTER_RSL_RL_DIR $TMPDIR
 # Get the directory name
 dir_name=$(basename "$1")
 
@@ -67,6 +68,7 @@ singularity exec \
     -B $TMPDIR/docker-isaac-sim/data:${DOCKER_USER_HOME}/.local/share/ov/data:rw \
     -B $TMPDIR/docker-isaac-sim/documents:${DOCKER_USER_HOME}/Documents:rw \
     -B $TMPDIR/$dir_name:/workspace/isaaclab:rw \
+    -B $TMPDIR/rsl_rl/rsl_rl:/isaac-sim/kit/python/lib/python3.10/site-packages/rsl_rl:rw \
     -B $CLUSTER_ISAACLAB_DIR/logs:/workspace/isaaclab/logs:rw \
     --nv --writable --containall $TMPDIR/$2.sif \
     bash -c "export ISAACLAB_PATH=/workspace/isaaclab && cd /workspace/isaaclab && /isaac-sim/python.sh ${CLUSTER_PYTHON_EXECUTABLE} ${@:3}"
