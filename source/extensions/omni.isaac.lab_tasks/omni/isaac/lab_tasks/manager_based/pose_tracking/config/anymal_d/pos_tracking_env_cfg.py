@@ -159,7 +159,7 @@ class EventCfg:
         mode="reset",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "joint_to_block": -1, # Index of joint to disable
+            "joint_to_block": [0, 4, 8], # Index of joint to disable
             "prob_no_block": 0.2,
         },
     )
@@ -197,7 +197,7 @@ class RewardsCfg:
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)
     
     dont_wait = RewTerm(func=mdp.dont_wait, weight=-1.0, params={"min_vel": 0.2, "command_name": "pose_command"})
-    # move_in_direction = RewTerm(func=mdp.move_in_direction, weight=1.0, params={"command_name": "pose_command"}) 
+    move_in_direction = RewTerm(func=mdp.move_in_direction, weight=1.0, params={"command_name": "pose_command"}) 
     
     # parkour tuning rewards
     dof_vel_l2 = RewTerm(func=mdp.joint_vel_l2, weight=-0.001)
@@ -206,7 +206,7 @@ class RewardsCfg:
         weight=-0.001,
         params={"asset_cfg": SceneEntityCfg("robot", body_names=["base"])}
     )
-    # collision = RewTerm(func=mdp.collision, weight=-0.5, params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*(THIGH|SHANK)")})
+    collision = RewTerm(func=mdp.collision, weight=-0.5, params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*(THIGH|SHANK)")})
     applied_torque_limits = RewTerm(func=mdp.applied_torque_limits, weight=-0.2)
     dof_vel_limits = RewTerm(func=mdp.joint_vel_limits, weight=-1.0, params={"soft_ratio": 0.9})
     feet_acc = RewTerm(
@@ -220,6 +220,13 @@ class RewardsCfg:
         params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*"), "threshold": 700.0},
     )
     stand_still = RewTerm(func=mdp.stand_still_pose, weight=-0.05, params={"duration": 1.0, "command_name": "pose_command"})
+    
+    # -- reward for time efficiency
+    time_efficiency_reward = RewTerm(
+        func=mdp.time_efficiency_reward,
+        weight=2.0,
+        params={"command_name": "pose_command"}
+    )
     # feet_balance = RewTerm(
     #     func=mdp.feet_balance,
     #     weight=-1000,
@@ -251,7 +258,13 @@ class TerminationsCfg:
 class CurriculumCfg:
     """Curriculum terms for the MDP."""
 
-    pass
+    # remove_move_in_direction_reward = CurrTerm(
+    #     func=mdp.modify_reward_weight, params={"term_name": "move_in_direction", "weight": 0.0, "num_steps": 300*48}
+    # )
+    remove_move_in_direction_reward = CurrTerm(
+        func=mdp.modify_reward_weight_on_threshold, params={"term_name": "move_in_direction", "weight": 0.0, "ref_term_name": "tracking_pos", "threshold": 0.5}
+    )
+    # pass
 
 
 ##

@@ -192,29 +192,8 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
         # -- reset envs that terminated/timed-out and log the episode information
         reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
-        # success_count = 0
-        # tracking_failure_count = 0
-        # early_termination_count = 0
 
         if len(reset_env_ids) > 0:
-        #     command = self.command_manager.get_term("pose_command")
-        #     asset = self.scene["robot"]
-        #     for env_id in reset_env_ids:
-        #         goal_distance = torch.norm(command.pos_command_w[env_id, :2] - asset.data.root_pos_w[env_id, :2])
-
-        #         if self.reset_time_outs[env_id] and not self.reset_terminated[env_id]:
-        #             # Check if the goal was reached within 0.1m when timeout
-        #             if goal_distance <= 0.1:
-        #                 success_count += 1
-        #             else:
-        #                 tracking_failure_count += 1
-        #         elif self.reset_terminated[env_id]:
-        #             # Count environments terminated due to other reasons
-        #             early_termination_count += 1
-
-        #     self.extras["success_count"] = success_count
-        #     self.extras["tracking_failure_count"] = tracking_failure_count
-        #     self.extras["early_termination_count"] = early_termination_count
             self._reset_idx(reset_env_ids)
         # -- update command
         self.command_manager.compute(dt=self.step_dt)

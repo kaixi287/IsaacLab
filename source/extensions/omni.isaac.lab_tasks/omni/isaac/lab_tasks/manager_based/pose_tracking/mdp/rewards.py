@@ -314,3 +314,14 @@ def stand_still(env: ManagerBasedRLEnv, duration: float, command_name: str, asse
     #     should_stand &= torch.abs(command.heading_command_w - asset.data.heading_w) < 0.5
     return torch.sum(torch.square(asset.data.joint_vel[:, asset_cfg.joint_ids]), dim=1) * should_stand * _command_duration_mask(env, duration, command_name)
 
+# -- time efficiency reward
+def time_efficiency_reward(env: ManagerBasedRLEnv, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+    """
+    Reward for reaching the target quickly.
+    """
+    command = env.command_manager.get_term(command_name)
+    asset: Articulation = env.scene[asset_cfg.name]
+    # Calculate the distance to the target
+    position_reached = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1) <= 0.1
+    
+    return command.time_left / env.max_episode_length_s * position_reached
