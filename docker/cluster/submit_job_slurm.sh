@@ -11,7 +11,7 @@ cat <<EOT > job.sh
 #SBATCH -n 1
 #SBATCH -A es_hutter
 #SBATCH --cpus-per-task=8
-#SBATCH --gpus=rtx_4090:1
+#SBATCH --gpus=1
 #SBATCH --time=23:00:00
 #SBATCH --mem-per-cpu=4048
 #SBATCH --mail-type=END
