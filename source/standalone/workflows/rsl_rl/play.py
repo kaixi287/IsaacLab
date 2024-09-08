@@ -52,6 +52,8 @@ import numpy as np
 
 from rsl_rl.runners import OnPolicyRunner
 
+from omni.isaac.lab.utils.dict import print_dict
+
 import omni.isaac.lab_tasks  # noqa: F401
 from omni.isaac.lab_tasks.utils import get_checkpoint_path, parse_env_cfg
 from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
@@ -61,14 +63,14 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
     export_policy_as_onnx,
 )
 if args_cli.test_symmetry:
-    from omni.isaac.lab_tasks.manager_based.pose_tracking.config.anymal_d.symmetry import get_symmetric_states
+    from omni.isaac.lab_tasks.manager_based.locomotion.position.config.anymal_d.symmetry import get_symmetric_states
 
 
 def main():
     """Play with RSL-RL agent."""
     # parse configuration
     env_cfg = parse_env_cfg(
-        args_cli.task, use_gpu=not args_cli.cpu, num_envs=args_cli.num_envs, use_fabric=not args_cli.disable_fabric
+        args_cli.task, device=args_cli.device, num_envs=args_cli.num_envs, use_fabric=not args_cli.disable_fabric
     )
     agent_cfg: RslRlOnPolicyRunnerCfg = cli_args.parse_rsl_rl_cfg(args_cli.task, args_cli)
 
@@ -104,10 +106,26 @@ def main():
     # set seed of the environment
     env.seed(agent_cfg.seed)
 
+    # create isaac environment
+    env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
+    # wrap for video recording
+    if args_cli.video:
+        video_kwargs = {
+            "video_folder": os.path.join(log_dir, "videos", "play"),
+            "step_trigger": lambda step: step == 0,
+            "video_length": args_cli.video_length,
+            "disable_logger": True,
+        }
+        print("[INFO] Recording videos during training.")
+        print_dict(video_kwargs, nesting=4)
+        env = gym.wrappers.RecordVideo(env, **video_kwargs)
+    # wrap around environment for rsl-rl
+    env = RslRlVecEnvWrapper(env)
+
+    print(f"[INFO]: Loading model checkpoint from: {resume_path}")
     # load previously trained model
     ppo_runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
     ppo_runner.load(resume_path)
-    print(f"[INFO]: Loading model checkpoint from: {resume_path}")
 
     # obtain the trained policy for inference
     policy = ppo_runner.get_inference_policy(device=env.unwrapped.device)
