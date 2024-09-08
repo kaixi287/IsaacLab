@@ -86,12 +86,12 @@ def update_rsl_rl_cfg(agent_cfg: RslRlOnPolicyRunnerCfg, args_cli: argparse.Name
     if args_cli.logger is not None:
         agent_cfg.logger = args_cli.logger
     # set the project name for wandb and neptune
-    if rslrl_cfg.logger in {"wandb", "neptune"} and args_cli.log_project_name:
-        rslrl_cfg.wandb_project = args_cli.log_project_name
-        rslrl_cfg.neptune_project = args_cli.log_project_name
-    if rslrl_cfg.logger == "wandb" and args_cli.log_run_name is not None:
-        rslrl_cfg.wandb_run_name = args_cli.log_run_name
+    if agent_cfg.logger in {"wandb", "neptune"} and args_cli.log_project_name:
+        agent_cfg.wandb_project = args_cli.log_project_name
+        agent_cfg.neptune_project = args_cli.log_project_name
+    if agent_cfg.logger == "wandb" and args_cli.log_run_name is not None:
+        agent_cfg.wandb_run_name = args_cli.log_run_name
     if args_cli.actor_critic_class_name is not None:
-        rslrl_cfg.policy.class_name = args_cli.actor_critic_class_name
+        agent_cfg.policy.class_name = args_cli.actor_critic_class_name
 
     return agent_cfg

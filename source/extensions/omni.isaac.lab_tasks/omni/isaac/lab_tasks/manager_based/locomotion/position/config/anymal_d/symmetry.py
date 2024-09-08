@@ -62,7 +62,7 @@ def _transform_obs_left_right(obs, has_height_scan=False):
     obs[..., idx+12:idx+24] = _switch_legs_lr(obs[..., idx+12:idx+24])
     # last actions
     obs[..., idx+24:idx+36] = _switch_legs_lr(obs[..., idx+24:idx+36])
-    # height_scan
+    # TODO: correct height_scan flipping
     if has_height_scan:
         obs[..., idx+36:]  = obs[..., idx+36:].view(*obs.shape[:-1], 21, 11).flip(dims=[-1]).view(*obs.shape[:-1], 21*11)
     return obs
