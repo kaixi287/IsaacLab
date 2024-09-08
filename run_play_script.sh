@@ -27,7 +27,7 @@ load_rnn_runs=(
 for run in "${load_mlp_runs[@]}"; do
 
     # Execute the command with the current load_run argument and appropriate log_run_name
-    ./docker/container.sh job --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 8 --seed 100 --video --video_length 2000 --actor_critic_class_name ActorCritic
+    ./docker/cluster/cluster_interface.sh job base --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 8 --seed 100 --video --video_length 2000 --actor_critic_class_name ActorCritic
     
     # Wait for 10 minutes (600 seconds) before running the next command
     sleep 400
@@ -37,7 +37,7 @@ done
 for run in "${load_rnn_runs[@]}"; do
 
     # Execute the command with the current load_run argument and appropriate log_run_name
-    ./docker/container.sh job --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 8 --seed 100 --video --video_length 2000 --actor_critic_class_name ActorCriticRecurrent
+    ./docker/cluster/cluster_interface.sh job base --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 8 --seed 100 --video --video_length 2000 --actor_critic_class_name ActorCriticRecurrent
     
     # Wait for 10 minutes (600 seconds) before running the next command
     sleep 400
