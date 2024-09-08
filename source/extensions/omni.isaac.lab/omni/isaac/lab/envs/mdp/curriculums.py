@@ -64,4 +64,3 @@ def modify_reward_weight_on_threshold(
         term_cfg.weight = weight
         # Apply the new settings
         env.reward_manager.set_term_cfg(term_name, term_cfg)
-        

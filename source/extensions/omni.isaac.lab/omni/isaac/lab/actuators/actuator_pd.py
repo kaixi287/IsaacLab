@@ -61,7 +61,7 @@ class ImplicitActuator(ActuatorBase):
         pass
 
     def compute(
-        self, control_action: ArticulationActions, joint_pos: torch.Tensor, joint_vel: torch.Tensor
+        self, control_action: ArticulationActions, joint_pos: torch.Tensor, joint_vel: torch.Tensor, **kwargs
     ) -> ArticulationActions:
         """Compute the aproximmate torques for the actuated joint (physX does not compute this explicitly)."""
         # store approximate torques for reward computation
