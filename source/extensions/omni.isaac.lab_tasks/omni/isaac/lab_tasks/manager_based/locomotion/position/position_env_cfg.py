@@ -6,8 +6,6 @@
 import math
 from dataclasses import MISSING
 
-import omni.isaac.lab.sim as sim_utils
-from omni.isaac.lab.assets import ArticulationCfg, AssetBaseCfg
 from omni.isaac.lab.envs import ManagerBasedRLEnvCfg
 from omni.isaac.lab.managers import CurriculumTermCfg as CurrTerm
 from omni.isaac.lab.managers import EventTermCfg as EventTerm
@@ -16,23 +14,11 @@ from omni.isaac.lab.managers import ObservationTermCfg as ObsTerm
 from omni.isaac.lab.managers import RewardTermCfg as RewTerm
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
-from omni.isaac.lab.scene import InteractiveSceneCfg
-from omni.isaac.lab.sensors import ContactSensorCfg, RayCasterCfg, patterns
-from omni.isaac.lab.terrains import TerrainImporterCfg
 from omni.isaac.lab.utils import configclass
-from omni.isaac.lab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
 from omni.isaac.lab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 
 import omni.isaac.lab_tasks.manager_based.locomotion.position.mdp as mdp
-from omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.anymal_d.flat_env_cfg import AnymalDFlatEnvCfg
-
-LOW_LEVEL_ENV_CFG = AnymalDFlatEnvCfg()
-
-##
-# Pre-defined configs
-##
-from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
-
+from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import MySceneCfg
 
 ##
 # MDP settings
@@ -77,7 +63,6 @@ class ObservationsCfg:
             func=mdp.projected_gravity,
             noise=Unoise(n_min=-0.05, n_max=0.05),
         )
-        # pose_commands = ObsTerm(func=mdp.generated_commands, params={"command_name": "pose_command"})
         pos_commands = ObsTerm(func=mdp.pos_commands, params={"command_name": "pose_command"})
         # heading_commands = ObsTerm(func=mdp.heading_commands_sin, params={"command_name": "pose_command"})
         time_to_target = ObsTerm(func=mdp.time_to_target, params={"command_name": "pose_command"}, noise=Unoise(n_min=-0.1, n_max=0.1))
@@ -208,30 +193,17 @@ class RewardsCfg:
     collision = RewTerm(func=mdp.collision, weight=-0.5, params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*(THIGH|SHANK)")})
     applied_torque_limits = RewTerm(func=mdp.applied_torque_limits, weight=-0.2)
     dof_vel_limits = RewTerm(func=mdp.joint_vel_limits, weight=-1.0, params={"soft_ratio": 0.9})
-    feet_acc = RewTerm(
-        func=mdp.feet_acc,
-        weight=-0.002,
-        params={"asset_cfg": SceneEntityCfg("robot", body_names=[".*_FOOT"])}
-    )
     contact_forces = RewTerm(
         func=mdp.contact_forces,
         weight=-0.00001,
         params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*"), "threshold": 700.0},
     )
     stand_still = RewTerm(func=mdp.stand_still_pose, weight=-0.05, params={"duration": 1.0, "command_name": "pose_command"})
-    
-    # -- reward for time efficiency
     time_efficiency_reward = RewTerm(
         func=mdp.time_efficiency_reward,
         weight=2.0,
         params={"command_name": "pose_command"}
     )
-    # feet_balance = RewTerm(
-    #     func=mdp.feet_balance,
-    #     weight=-1000,
-    #     params={"duration": 1.0, "command_name": "pose_command", "asset_cfg": SceneEntityCfg("robot", body_names=[".*_FOOT"])}
-    # )
-
 
 @configclass
 class TerminationsCfg:
@@ -242,28 +214,15 @@ class TerminationsCfg:
         func=mdp.illegal_contact,
         params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0},
     )
-    illegal_force_feet = DoneTerm(
-        func=mdp.illegal_force,
-        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*FOOT"), "max_force": 1500},
-    )
-    illegal_force = DoneTerm(
-        func=mdp.illegal_force,
-        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*"), "max_force": 5000},
-    )
-    # command_resample = DoneTerm(func=mdp.command_resample, params={"command_name": "pose_command", "num_resamples": 1})
 
 
 @configclass
 class CurriculumCfg:
     """Curriculum terms for the MDP."""
-
-    # remove_move_in_direction_reward = CurrTerm(
-    #     func=mdp.modify_reward_weight, params={"term_name": "move_in_direction", "weight": 0.0, "num_steps": 300*48}
-    # )
+    # pass
     remove_move_in_direction_reward = CurrTerm(
         func=mdp.modify_reward_weight_on_threshold, params={"term_name": "move_in_direction", "weight": 0.0, "ref_term_name": "tracking_pos", "threshold": 0.5}
     )
-    # pass
 
 
 ##
@@ -276,7 +235,7 @@ class PosTrackingEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the locomotion velocity-tracking environment."""
 
     # Scene settings
-    scene: SceneEntityCfg = LOW_LEVEL_ENV_CFG.scene
+    scene: MySceneCfg = MySceneCfg(num_envs=4096, env_spacing=2.5)
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
@@ -290,20 +249,17 @@ class PosTrackingEnvCfg(ManagerBasedRLEnvCfg):
     def __post_init__(self):
         """Post initialization."""
         # general settings
-        self.decimation = LOW_LEVEL_ENV_CFG.decimation
+        self.decimation = 4
         self.episode_length_s = self.commands.pose_command.resampling_time_range[1]
         # simulation settings
-        self.sim.dt = LOW_LEVEL_ENV_CFG.sim.dt
-        self.sim.render_interval = LOW_LEVEL_ENV_CFG.decimation * 10
+        self.sim.dt = 0.005
+        self.sim.render_interval = self.decimation
         self.sim.disable_contact_processing = True
         self.sim.physics_material = self.scene.terrain.physics_material
         # update sensor update periods
         # we tick all the sensors based on the smallest update period (physics update period)
         if self.scene.height_scanner is not None:
             self.scene.height_scanner.update_period = self.decimation * self.sim.dt
-        else:
-            self.observations.policy.height_scan = None
-            # self.observations.critic.height_scan = None
             
         if self.scene.contact_forces is not None:
             self.scene.contact_forces.update_period = self.sim.dt
@@ -319,14 +275,3 @@ class PosTrackingEnvCfg(ManagerBasedRLEnvCfg):
         
         if getattr(self.events, "block_joint", None) is not None:
             self.scene.robot.debug_vis = True
-
-class PosTrackingEnvCfg_PLAY(PosTrackingEnvCfg):
-    def __post_init__(self) -> None:
-        # post init of parent
-        super().__post_init__()
-
-        # make a smaller scene for play
-        # self.scene.num_envs = 50
-        self.scene.env_spacing = 2.5
-        # disable randomization for play
-        self.observations.policy.enable_corruption = False

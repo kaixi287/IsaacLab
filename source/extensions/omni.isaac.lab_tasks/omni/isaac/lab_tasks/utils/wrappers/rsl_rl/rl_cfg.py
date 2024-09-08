@@ -73,7 +73,7 @@ class RslRlPpoAlgorithmCfg:
     max_grad_norm: float = MISSING
     """The maximum gradient norm."""
     
-    symmetry_cfg: dict | None = MISSING
+    symmetry_cfg: dict | None = None
     """Symmetry augmentation configuration."""
 
 

@@ -5,7 +5,7 @@
 
 import gymnasium as gym
 
-from . import agents, pos_tracking_env_cfg
+from . import agents, flat_env_cfg
 
 ##
 # Register Gym environments.
@@ -16,8 +16,8 @@ gym.register(
     entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": pos_tracking_env_cfg.G1PosTrackingEnvCfg,
-        "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.G1PosTrackingEnvPPORunnerCfg,
+        "env_cfg_entry_point": flat_env_cfg.G1PosTrackingFlatEnvCfg,
+        "rsl_rl_cfg_entry_point": agents.rsl_rl_ppo_cfg.G1PosTrackingEnvPPORunnerCfg,
     },
 )
 
@@ -26,7 +26,7 @@ gym.register(
     entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": pos_tracking_env_cfg.G1PosTrackingEnvCfg_PLAY,
-        "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.G1PosTrackingEnvPPORunnerCfg,
+        "env_cfg_entry_point": flat_env_cfg.G1PosTrackingFlatEnvCfg_PLAY,
+        "rsl_rl_cfg_entry_point": agents.rsl_rl_ppo_cfg.G1PosTrackingEnvPPORunnerCfg,
     },
 )
