@@ -107,9 +107,6 @@ def main():
         # specify directory for logging experiments
         log_root_path = os.path.join("logs", "rsl_rl", agent_cfg.experiment_name)
     log_root_path = os.path.abspath(log_root_path)
-    # log_file = os.path.join(log_root_path, "evaluation.log")
-    # sys.stdout = open(log_file, 'a')
-    # sys.stderr = open(log_file, 'a')
     print(f"[INFO] Loading experiment from directory: {log_root_path}")
     resume_paths = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
 
