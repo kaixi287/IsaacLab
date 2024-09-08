@@ -16,10 +16,8 @@ import cli_args  # isort: skip
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Train an RL agent with RSL-RL.")
-parser.add_argument("--video", action="store_true", default=False, help="Record videos during evaluation.")
-parser.add_argument("--video_length", type=int, default=1000, help="Length of the recorded video (in steps).")
-parser.add_argument("--video_interval", type=int, default=50, help="Interval between video recordings (in steps).")
-parser.add_argument("--cpu", action="store_true", default=False, help="Use CPU pipeline.")
+parser.add_argument("--video", action="store_true", default=False, help="Record videos during training.")
+parser.add_argument("--video_length", type=int, default=200, help="Length of the recorded video (in steps).")
 parser.add_argument(
     "--disable_fabric", action="store_true", default=False, help="Disable fabric and use USD I/O operations."
 )
@@ -27,7 +25,6 @@ parser.add_argument("--num_envs", type=int, default=None, help="Number of enviro
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
 parser.add_argument("--log_root_path", type=str, default=None, help="Relative path of log root directory.")
-parser.add_argument("--test_symmetry", action="store_true", default=False, help="Whether to test symmetry augmentation.")
 
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
@@ -47,8 +44,6 @@ simulation_app = app_launcher.app
 import gymnasium as gym
 import os
 import torch
-import sys
-import numpy as np
 
 from rsl_rl.runners import OnPolicyRunner
 
@@ -62,8 +57,6 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
     export_policy_as_jit,
     export_policy_as_onnx,
 )
-if args_cli.test_symmetry:
-    from omni.isaac.lab_tasks.manager_based.locomotion.position.config.anymal_d.symmetry import get_symmetric_states
 
 
 def main():
@@ -80,31 +73,9 @@ def main():
         # specify directory for logging experiments
         log_root_path = os.path.join("logs", "rsl_rl", agent_cfg.experiment_name)
     log_root_path = os.path.abspath(log_root_path)
-    # log_file = os.path.join(log_root_path, "evaluation.log")
-    # sys.stdout = open(log_file, 'a')
-    # sys.stderr = open(log_file, 'a')
     print(f"[INFO] Loading experiment from directory: {log_root_path}")
     resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
-    print(f"[INFO]: Loading model checkpoint from: {resume_path}")
-    test_symmetry = args_cli.test_symmetry
-
-    # create isaac environment
-    env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
-    # wrap for video recording
-    if args_cli.video:
-        video_kwargs = {
-            "video_folder": os.path.join(log_root_path, agent_cfg.load_run, "play_videos"),
-            "step_trigger": lambda step: step % args_cli.video_interval == 0,
-            "video_length": args_cli.video_length,
-            "disable_logger": True,
-        }
-        print("[INFO] Recording videos during evaluation.")
-        env = gym.wrappers.RecordVideo(env, **video_kwargs)
-    # wrap around environment for rsl-rl
-    env = RslRlVecEnvWrapper(env)
-
-    # set seed of the environment
-    env.seed(agent_cfg.seed)
+    log_dir = os.path.dirname(resume_path)
 
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
@@ -121,6 +92,9 @@ def main():
         env = gym.wrappers.RecordVideo(env, **video_kwargs)
     # wrap around environment for rsl-rl
     env = RslRlVecEnvWrapper(env)
+    
+    # set seed of the environment
+    env.seed(agent_cfg.seed)
 
     print(f"[INFO]: Loading model checkpoint from: {resume_path}")
     # load previously trained model
@@ -141,83 +115,26 @@ def main():
 
     # reset environment
     obs, _ = env.get_observations()
-
-    # metrics
-    num_envs = env.num_envs
-    first_episode_rewards = np.zeros(num_envs)
-    episode_completed = np.zeros(num_envs, dtype=bool)  # Track whether the first episode is completed for each env
-    current_rewards = np.zeros(num_envs)
-    current_lengths = np.zeros(num_envs)
-
-    if test_symmetry:
-        batch_size = num_envs // 4
-        symmetry_loss = np.zeros(num_envs)
-        episode_symmetry_loss = []
-
-        # Get symmetric states for the initial observations and actions
-        obs, _ = get_symmetric_states(obs=obs[:batch_size], env=env, is_critic=False)
-        assert obs.shape[0] == num_envs
-        
-    step = 0
-    num_episodes_recorded = 0
+    timestep = 0
     recorded_videos = 0
-
     # simulate environment
-    while recorded_videos < 1:
+    while simulation_app.is_running():
         # run everything in inference mode
         with torch.inference_mode():
+            # agent stepping
             actions = policy(obs)
-            obs, rewards, dones, _ = env.step(actions)
-
-            current_rewards += rewards.cpu().numpy()
-            current_lengths += 1
-            
-            if test_symmetry:
-                # Get symmetric observations and actions
-                obs, sym_actions = get_symmetric_states(obs=obs[:batch_size], actions=actions[:batch_size], env=env)
-                # compute the loss between predicted actions and symmetric actions
-                mse_loss = torch.nn.MSELoss()
-                loss = mse_loss(actions, sym_actions)
-                symmetry_loss += loss.detach().cpu().numpy()
-
-            if np.any(dones.cpu().numpy()):
-                done_indices = np.where(dones.cpu().numpy())[0]
-                for idx in done_indices:
-                    if not episode_completed[idx]:
-                        # Record the reward of the first episode
-                        first_episode_rewards[idx] = current_rewards[idx]
-                        episode_completed[idx] = True
-                        num_episodes_recorded += 1
-
-                    # Reset current rewards and lengths for the next episode
-                    current_rewards[idx] = 0
-                    current_lengths[idx] = 0
-                    
-                    if test_symmetry:
-                        episode_symmetry_loss.append(symmetry_loss[idx])
-                        symmetry_loss[idx] = 0
-
-                # Print the progress
-                string = f"Num Episodes Recorded: {num_episodes_recorded}/{num_envs}, Mean First Episode Reward (So Far): {np.mean(first_episode_rewards[episode_completed])}"
-                if test_symmetry:
-                    string += f", Mean Symmetry Loss (So Far over {len(episode_symmetry_loss)} episodes): {np.mean(episode_symmetry_loss)}"
-                print(string)
-
-            # Record video at specified intervals
-            if args_cli.video and step % args_cli.video_interval == 0:
-                env.reset()
-                for _ in range(args_cli.video_length):
-                    with torch.inference_mode():
-                        actions = policy(obs)
-                        obs, _, _, _ = env.step(actions)
+            # env stepping
+            obs, _, _, _ = env.step(actions)
+        if args_cli.video:
+            timestep += 1
+            # Exit the play loop after recording one video
+            if timestep == args_cli.video_length:
                 recorded_videos += 1
-            
-            step += 1
+                break
+        
+        if recorded_videos == 1:
+            break
 
-    # Print final metrics for the first episodes
-    print(f"Final Mean First Episode Reward: {np.mean(first_episode_rewards)}")
-    print(f"Final Sum First Episode Reward: {np.sum(first_episode_rewards)}")
-    print(f"Number of Recorded First Episodes: {num_episodes_recorded}")
     # close the simulator
     env.close()
 
