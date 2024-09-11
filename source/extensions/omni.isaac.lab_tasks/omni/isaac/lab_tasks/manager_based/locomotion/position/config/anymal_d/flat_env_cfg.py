@@ -85,3 +85,7 @@ class AnymalDPosTrackingFlatEnvCfg_PLAY(AnymalDPosTrackingFlatEnvCfg):
         self.scene.env_spacing = 2.5
         # disable randomization for play
         self.observations.policy.enable_corruption = False
+        self.terminations.base_contact = None
+        self.terminations.illegal_force = None
+        self.terminations.illegal_force_feet = None
+        self.events.block_joint.params["prob_no_block"] = 0.0
