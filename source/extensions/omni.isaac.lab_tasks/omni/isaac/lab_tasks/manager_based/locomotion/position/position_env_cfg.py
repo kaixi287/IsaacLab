@@ -201,7 +201,7 @@ class RewardsCfg:
     stand_still = RewTerm(func=mdp.stand_still_pose, weight=-0.05, params={"duration": 1.0, "command_name": "pose_command"})
     time_efficiency_reward = RewTerm(
         func=mdp.time_efficiency_reward,
-        weight=2.0,
+        weight=1.0,
         params={"command_name": "pose_command"}
     )
 
@@ -219,10 +219,10 @@ class TerminationsCfg:
 @configclass
 class CurriculumCfg:
     """Curriculum terms for the MDP."""
-    # pass
-    remove_move_in_direction_reward = CurrTerm(
-        func=mdp.modify_reward_weight_on_threshold, params={"term_name": "move_in_direction", "weight": 0.0, "ref_term_name": "tracking_pos", "threshold": 0.5}
-    )
+    pass
+    # remove_move_in_direction_reward = CurrTerm(
+    #     func=mdp.modify_reward_weight_on_threshold, params={"term_name": "move_in_direction", "weight": 0.0, "ref_term_name": "tracking_pos", "threshold": 0.5}
+    # )
 
 
 ##
@@ -272,6 +272,3 @@ class PosTrackingEnvCfg(ManagerBasedRLEnvCfg):
         else:
             if self.scene.terrain.terrain_generator is not None:
                 self.scene.terrain.terrain_generator.curriculum = False
-        
-        if getattr(self.events, "block_joint", None) is not None:
-            self.scene.robot.debug_vis = True

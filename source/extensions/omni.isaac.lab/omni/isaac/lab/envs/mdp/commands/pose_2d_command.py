@@ -92,6 +92,11 @@ class UniformPose2dCommand(CommandTerm):
     @property
     def heading_command_w(self) -> torch.Tensor:
         return self._heading_command_w
+    
+    @property
+    def initial_pos_w(self) -> torch.Tensor:
+        """Initial position of the agents in the world frame."""
+        return self._env.scene.env_origins
 
     """
     Implementation specific functions.
