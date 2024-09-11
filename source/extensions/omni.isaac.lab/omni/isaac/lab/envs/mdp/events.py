@@ -78,25 +78,32 @@ def block_joint(
     num_envs = len(env_ids)
 
     # Determine whether to block joints based on probability
-    block_decision = torch.rand(num_envs, device=asset.device) >= prob_no_block
+    # block_decision = torch.rand(num_envs, device=asset.device) >= prob_no_block
 
     # Initialize tensor for joints to block with -1 indicating no joint to block
     joints_to_block = torch.full((num_envs,), -1, dtype=torch.int, device=asset.device)
 
-    # Determine joints to block
-    if isinstance(joint_to_block, list):
-        # Sample from the list of joint indices
-        joint_to_block = torch.tensor(joint_to_block, dtype=torch.int, device="cpu")
-        indices = torch.randint(len(joint_to_block), (num_envs,), dtype=torch.int, device="cpu")
-        selected_joints = joint_to_block[indices].to(asset.device)
-        joints_to_block[block_decision] = selected_joints[block_decision]
-    elif joint_to_block == -1:
-        # Generate random joint
-        random_joints = torch.randint(asset.num_joints, (num_envs,), dtype=torch.int, device=asset.device)
-        joints_to_block[block_decision] = random_joints[block_decision]
-    else:
-        selected_joint = torch.tensor([joint_to_block] * num_envs, dtype=torch.int, device=asset.device)
-        joints_to_block[block_decision] = selected_joint[block_decision]
+    hardcoded_joints = torch.tensor([8, 8, 9, 9, 10, 10, 11, 11], dtype=torch.int, device=env.device)
+
+    if len(hardcoded_joints) != len(env_ids):
+        raise ValueError(f"The number of hardcoded joints ({len(hardcoded_joints)}) does not match the number of environments ({len(env_ids)}).")
+    
+    joints_to_block[:] = hardcoded_joints[:]
+
+    # # Determine joints to block
+    # if isinstance(joint_to_block, list):
+    #     # Sample from the list of joint indices
+    #     joint_to_block = torch.tensor(joint_to_block, dtype=torch.int, device="cpu")
+    #     indices = torch.randint(len(joint_to_block), (num_envs,), dtype=torch.int, device="cpu")
+    #     selected_joints = joint_to_block[indices].to(asset.device)
+    #     joints_to_block[block_decision] = selected_joints[block_decision]
+    # elif joint_to_block == -1:
+    #     # Generate random joint
+    #     random_joints = torch.randint(asset.num_joints, (num_envs,), dtype=torch.int, device=asset.device)
+    #     joints_to_block[block_decision] = random_joints[block_decision]
+    # else:
+    #     selected_joint = torch.tensor([joint_to_block] * num_envs, dtype=torch.int, device=asset.device)
+    #     joints_to_block[block_decision] = selected_joint[block_decision]
 
     # Update markers to show which joint is blocked
     asset.update_blocked_joints(env_ids, joints_to_block)

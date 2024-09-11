@@ -109,11 +109,17 @@ class UniformPose2dCommand(CommandTerm):
         
         if self.cfg.polar_sampling:
             # Sample random radii and angles for polar coordinates
-            r = torch.empty(len(env_ids), device=self.device)
-            theta = torch.empty(len(env_ids), device=self.device)
+            # r = torch.empty(len(env_ids), device=self.device)
+            # theta = torch.empty(len(env_ids), device=self.device)
 
-            radius = r.uniform_(*self.cfg.polar_ranges.radius)
-            angle = theta.uniform_(*self.cfg.polar_ranges.theta)
+            # radius = r.uniform_(*self.cfg.polar_ranges.radius)
+            # angle = theta.uniform_(*self.cfg.polar_ranges.theta)
+
+            radius = torch.tensor([4] * len(env_ids), device=self.device, dtype=torch.float)
+            angle = torch.tensor([-torch.pi/2, torch.pi/2, -torch.pi/2, torch.pi/2, -torch.pi/2, torch.pi/2, -torch.pi/2, torch.pi/2], 
+                         device=self.device, dtype=torch.float)
+            # angle = torch.tensor([torch.pi/2, torch.pi/4, torch.pi/2, 3*torch.pi/4, -torch.pi/2, -torch.pi/4, -torch.pi/2, -3*torch.pi/4], 
+            #     device=self.device, dtype=torch.float)
 
             # Apply the offsets to the position commands
             self._pos_command_w[env_ids, 0] += radius * torch.cos(angle)
