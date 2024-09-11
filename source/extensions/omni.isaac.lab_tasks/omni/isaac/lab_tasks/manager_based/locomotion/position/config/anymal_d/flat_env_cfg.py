@@ -69,6 +69,10 @@ class AnymalDPosTrackingFlatEnvCfg(PosTrackingEnvCfg):
         self.scene.height_scanner = None
         self.observations.policy.height_scan = None
         self.observations.critic.height_scan = None
+
+        # Set debug visualization for blocked joints
+        if getattr(self.events, "block_joint", None) is not None:
+            self.scene.robot.debug_vis = True
         
 
 class AnymalDPosTrackingFlatEnvCfg_PLAY(AnymalDPosTrackingFlatEnvCfg):

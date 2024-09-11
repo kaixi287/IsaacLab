@@ -223,17 +223,17 @@ class Articulation(AssetBase):
             
             # Create pink markers for in-distribution joints
             if self.in_distribution_joint_ids:
-                if not hasattr(self, "pink_joint_marker"):
-                    pink_marker_cfg = GREEN_JOINT_MARKER_CFG.copy()
-                    pink_marker_cfg.prim_path = "/Visuals/Joints/Pink"
-                    self.pink_joint_marker = VisualizationMarkers(pink_marker_cfg)
-                self.pink_joint_marker.set_visibility(True)
+                if not hasattr(self, "green_joint_marker"):
+                    green_marker_cfg = GREEN_JOINT_MARKER_CFG.copy()
+                    green_marker_cfg.prim_path = "/Visuals/Joints/Pink"
+                    self.green_joint_marker = VisualizationMarkers(green_marker_cfg)
+                self.green_joint_marker.set_visibility(True)
         else:
             if hasattr(self, "yellow_joint_marker"):
                 self.yellow_joint_marker.set_visibility(False)
             if self.in_distribution_joint_ids:
-                if hasattr(self, "pink_joint_marker"):
-                    self.pink_joint_marker.set_visibility(False)
+                if hasattr(self, "green_joint_marker"):
+                    self.green_joint_marker.set_visibility(False)
 
     def _debug_vis_callback(self, event):
         # Check if the articulation is valid
@@ -261,12 +261,12 @@ class Articulation(AssetBase):
 
                     if torch.any(in_distribution_mask):
                         # Visualize in-distribution joints in pink
-                        pink_joint_pos = blocked_joint_pos[in_distribution_mask]
-                        self.pink_joint_marker.visualize(pink_joint_pos)
-                        self.pink_joint_marker.set_visibility(True)
+                        green_joint_pos = blocked_joint_pos[in_distribution_mask]
+                        self.green_joint_marker.visualize(green_joint_pos)
+                        self.green_joint_marker.set_visibility(True)
                     else:
                         # Set visibility to false if no in-distribution joints are found
-                        self.pink_joint_marker.set_visibility(False)
+                        self.green_joint_marker.set_visibility(False)
                     
                     out_of_distribution_mask = ~in_distribution_mask
                     if torch.any(out_of_distribution_mask):
@@ -281,7 +281,7 @@ class Articulation(AssetBase):
                     # If no in-distribution joints are specified, visualize all in yellow
                     self.yellow_joint_marker.visualize(blocked_joint_pos)
                     self.yellow_joint_marker.set_visibility(True)
-                    self.pink_joint_marker.set_visibility(False)
+                    self.green_joint_marker.set_visibility(False)
                     
     """
     Operations.
