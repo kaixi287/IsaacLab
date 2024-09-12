@@ -62,6 +62,9 @@ class ArticulationData:
         # Initialize history for finite differencing
         self._previous_joint_vel = self._root_physx_view.get_dof_velocities().clone()
 
+        # Initialize a buffer for the previous root position
+        self._previous_root_pos_w = self._root_physx_view.get_root_transforms().clone()[:, :3]
+        
         # Initialize the lazy buffers.
         self._root_state_w = TimestampedBuffer()
         self._body_state_w = TimestampedBuffer()
@@ -73,6 +76,10 @@ class ArticulationData:
     def update(self, dt: float):
         # update the simulation timestamp
         self._sim_timestamp += dt
+
+        # Before updating the current state, store the current position as the previous position
+        self._previous_root_pos_w[:] = self.root_pos_w  # Update previous position with current one
+
         # Trigger an update of the joint acceleration buffer at a higher frequency
         # since we do finite differencing.
         self.joint_acc
@@ -344,6 +351,11 @@ class ArticulationData:
             # update the previous joint velocity
             self._previous_joint_vel[:] = self.joint_vel
         return self._joint_acc.data
+
+    @property
+    def prev_root_pos_w(self):
+        """Return the root position in the world frame from the previous time step."""
+        return self._previous_root_pos_w
 
     ##
     # Derived properties.

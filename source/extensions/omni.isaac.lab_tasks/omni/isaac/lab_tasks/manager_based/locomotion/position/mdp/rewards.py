@@ -355,24 +355,19 @@ def time_efficiency_reward(env: ManagerBasedRLEnv, command_name: str, asset_cfg:
     
     return command.time_left / env.max_episode_length_s * position_reached
 
-def energy_efficiency_per_distance(env: ManagerBasedRLEnv, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+def energy_efficiency_per_distance(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """
     Compute energy efficiency as the ratio of total mechanical energy consumption to the distance traveled.
     """
     asset: Articulation = env.scene[asset_cfg.name]
-    command = env.command_manager.get_term(command_name)
 
     # Compute mechanical power as sum of torque * angular velocity of all joints
-    mechanical_power = torch.sum(asset.data.applied_torque * asset.data.joint_vel, dim=1)  # (batch_size,)
+    mechanical_power = torch.sum(asset.data.applied_torque * torch.abs(asset.data.joint_vel), dim=1)  # (batch_size,)
 
     # Compute energy consumed in the current timestep
     energy_consumed = mechanical_power * env.step_dt  # (batch_size,)
 
-    # Calculate the distance traveled
-    start_position = command.initial_pos_w[:, :2]   # Initial position
-    curr_position = asset.data.root_pos_w[:, :2]    # Current position
-
-    distance_traveled = torch.norm(curr_position - start_position, dim=1)  # (batch_size,)
+    distance_traveled = torch.norm(asset.data.root_pos_w[:, :2] - asset.data.prev_root_pos_w[:, :2], dim=1)  # (batch_size,)
 
     # Avoid division by zero: Set a minimum distance traveled threshold
     epsilon = 1e-8
