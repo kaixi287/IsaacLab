@@ -52,7 +52,7 @@ for run in "${load_mlp_runs[@]}"; do
     fi
 
     # Execute the command with the current load_run argument and appropriate log_run_name
-    ./docker/cluster/cluster_interface.sh job base --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 1000 --seed 15 --logger wandb --log_project_name position_tracking_eval3_15 --log_run_name "$log_run_name" --actor_critic_class_name ActorCritic
+    ./docker/cluster/cluster_interface.sh job base --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 1000 --seed 10 --logger wandb --log_project_name position_tracking_eval3_10 --log_run_name "$log_run_name" --actor_critic_class_name ActorCritic
     
     # Wait for 10 minutes (600 seconds) before running the next command
     sleep 350
@@ -72,7 +72,7 @@ for run in "${load_rnn_runs[@]}"; do
     fi
 
     # Execute the command with the current load_run argument and appropriate log_run_name
-    ./docker/cluster/cluster_interface.sh job base --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 1000 --seed 15 --logger wandb --log_project_name position_tracking_eval3_15 --log_run_name "$log_run_name" --actor_critic_class_name ActorCriticRecurrent
+    ./docker/cluster/cluster_interface.sh job base --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 1000 --seed 10 --logger wandb --log_project_name position_tracking_eval3_10 --log_run_name "$log_run_name" --actor_critic_class_name ActorCriticRecurrent
     
     # Wait for 10 minutes (600 seconds) before running the next command
     sleep 350

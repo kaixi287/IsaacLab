@@ -56,6 +56,9 @@ class UniformPose2dCommand(CommandTerm):
         self._pos_command_w = torch.zeros(self.num_envs, 3, device=self.device)
         self.pos_command_b = torch.zeros_like(self._pos_command_w)
         self._heading_command_w = torch.zeros(self.num_envs, device=self.device)
+
+        # new buffer to store the distance from initial position to goal position
+        self._initial_to_goal_distance = torch.zeros(self.num_envs, device=self.device)
         
         # -- metrics
         self.metrics["error_pos"] = torch.zeros(self.num_envs, device=self.device)
@@ -97,6 +100,11 @@ class UniformPose2dCommand(CommandTerm):
     def initial_pos_w(self) -> torch.Tensor:
         """Initial position of the agents in the world frame."""
         return self._env.scene.env_origins
+    
+    @property
+    def initial_to_goal_distance(self) -> torch.Tensor:
+        """Distance from the initial position to the goal position."""
+        return self._initial_to_goal_distance
 
     """
     Implementation specific functions.
@@ -110,7 +118,8 @@ class UniformPose2dCommand(CommandTerm):
 
     def _resample_command(self, env_ids: Sequence[int]):
         # obtain env origins for the environments
-        self._pos_command_w[env_ids] = self._env.scene.env_origins[env_ids]
+        # self._pos_command_w[env_ids] = self._env.scene.env_origins[env_ids]
+        initial_positions = self._env.scene.env_origins[env_ids]
         
         if self.cfg.polar_sampling:
             # Sample random radii and angles for polar coordinates
@@ -121,16 +130,18 @@ class UniformPose2dCommand(CommandTerm):
             angle = theta.uniform_(*self.cfg.polar_ranges.theta)
 
             # Apply the offsets to the position commands
-            self._pos_command_w[env_ids, 0] += radius * torch.cos(angle)
-            self._pos_command_w[env_ids, 1] += radius * torch.sin(angle)
+            self._pos_command_w[env_ids, 0] = initial_positions[:, 0] + radius * torch.cos(angle)
+            self._pos_command_w[env_ids, 1] = initial_positions[:, 1] + radius * torch.sin(angle)
         else:
             # offset the position command by the current root position
             r = torch.empty(len(env_ids), device=self.device)
-            self._pos_command_w[env_ids, 0] += r.uniform_(*self.cfg.ranges.pos_x)
-            self._pos_command_w[env_ids, 1] += r.uniform_(*self.cfg.ranges.pos_y)
+            self._pos_command_w[env_ids, 0] = initial_positions[:, 0] + r.uniform_(*self.cfg.ranges.pos_x)
+            self._pos_command_w[env_ids, 1] = initial_positions[:, 1] + r.uniform_(*self.cfg.ranges.pos_y)
         
         # offset the position command by the default root height
         self._pos_command_w[env_ids, 2] += self.robot.data.default_root_state[env_ids, 2]
+
+        self._initial_to_goal_distance[env_ids] = torch.norm(self._pos_command_w[env_ids, :2] - initial_positions[:, :2], dim=1)
         
         if self.cfg.include_heading:
             if self.cfg.simple_heading:

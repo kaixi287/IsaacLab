@@ -343,7 +343,7 @@ def stand_still(env: ManagerBasedRLEnv, duration: float, command_name: str, asse
     #     should_stand &= torch.abs(command.heading_command_w - asset.data.heading_w) < 0.5
     return torch.sum(torch.square(asset.data.joint_vel[:, asset_cfg.joint_ids]), dim=1) * should_stand * _command_duration_mask(env, duration, command_name)
 
-# -- time efficiency reward
+# -- evaluation metrics
 def time_efficiency_reward(env: ManagerBasedRLEnv, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """
     Reward for reaching the target quickly.
@@ -355,23 +355,69 @@ def time_efficiency_reward(env: ManagerBasedRLEnv, command_name: str, asset_cfg:
     
     return command.time_left / env.max_episode_length_s * position_reached
 
-def energy_efficiency_per_distance(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+def energy_consumption_per_distance(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """
-    Compute energy efficiency as the ratio of total mechanical energy consumption to the distance traveled.
+    Compute energy consumption as the sum of squared torques normalized by the distance traveled.
     """
     asset: Articulation = env.scene[asset_cfg.name]
 
-    # Compute mechanical power as sum of torque * angular velocity of all joints
-    mechanical_power = torch.sum(asset.data.applied_torque * torch.abs(asset.data.joint_vel), dim=1)  # (batch_size,)
+    # Compute the sum of squared joint torques for each environment (proxy for energy consumption)
+    torque_squared = torch.sum(torch.square(asset.data.applied_torque), dim=1)  # (batch_size,)
 
-    # Compute energy consumed in the current timestep
-    energy_consumed = mechanical_power * env.step_dt  # (batch_size,)
-
-    distance_traveled = torch.norm(asset.data.root_pos_w[:, :2] - asset.data.prev_root_pos_w[:, :2], dim=1)  # (batch_size,)
+    distance_traveled = torch.norm(asset.data.root_pos_w[:, :2] - asset.prev_root_pos_w[:, :2], dim=1)  # (batch_size,)
 
     # Avoid division by zero: Set a minimum distance traveled threshold
-    epsilon = 1e-8
-    energy_efficiency = energy_consumed / (distance_traveled + epsilon)
+    energy_per_distance = torque_squared / (distance_traveled + 1e-8)
 
-    # Return the inverse of energy efficiency so that lower energy consumption per distance yields higher reward
-    return 1.0 / (energy_efficiency + epsilon)
+    # Return the inverse of energy consumption per distance so that lower energy consumption gives higher reward
+    return energy_per_distance
+
+def mech_power(env: ManagerBasedRLEnv, recuperation: float = 0.4, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+    """
+    Compute mechanical power as a penalization based on torques and velocities with recuperation.
+
+    Args:
+        env: The environment object containing the simulation state.
+        params: Dictionary containing parameters for the calculation, including 'recuperation'.
+        asset_cfg: Configuration for the robot articulation.
+
+    Returns:
+        torch.Tensor: The mechanical power penalization.
+    """
+    asset: Articulation = env.scene[asset_cfg.name]
+
+    # Calculate positive mechanical power (torque * velocity, clipped to be non-negative)
+    pos_power = (asset.data.applied_torque * asset.data.joint_vel).clip(min=0.0).sum(dim=-1)
+
+    # Calculate negative mechanical power (torque * velocity, clipped to be non-positive)
+    neg_power = (asset.data.applied_torque * asset.data.joint_vel).clip(max=0.0).sum(dim=-1)
+
+    # Total mechanical power, with recuperation applied to the negative power
+    total_power = pos_power + recuperation * neg_power
+
+    # Penalize the square of the total mechanical power
+    return torch.square(total_power)
+
+def path_efficiency(env: ManagerBasedRLEnv, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+    """
+    Compute path efficiency as the ratio of the straight-line distance to the actual distance traveled.
+    
+    Args:
+        env: The environment object containing the simulation state.
+        asset_cfg: Configuration for the robot articulation.
+
+    Returns:
+        torch.Tensor: The path efficiency reward.
+    """
+    asset: Articulation = env.scene[asset_cfg.name]
+    command = env.command_manager.get_term(command_name)
+
+    straight_line_distance = command.initial_to_goal_distance
+
+    # Distance traveled in the current step
+    step_distance = torch.norm(asset.data.root_pos_w[:, :2] - asset.prev_root_pos_w[:, :2], dim=1)  # (batch_size,)
+
+    # Calculate path efficiency (closer to 1 means more efficient path)
+    path_efficiency = straight_line_distance / (step_distance + 1e-8)
+
+    return path_efficiency

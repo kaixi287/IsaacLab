@@ -43,7 +43,6 @@ class AnymalDRewards(RewardsCfg):
         weight=-0.002,
         params={"asset_cfg": SceneEntityCfg("robot", body_names=[".*_FOOT"])}
     )
-    energy_efficiency = RewTerm(func=mdp.energy_efficiency_per_distance, weight=1e6)
 
 ##
 # Environment configuration

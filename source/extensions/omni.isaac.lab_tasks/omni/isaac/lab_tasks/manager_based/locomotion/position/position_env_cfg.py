@@ -167,7 +167,7 @@ class RewardsCfg:
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
     # ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
     dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-1.0e-5)
-    # dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
+    dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
     action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
     # undesired_contacts = RewTerm(
     #     func=mdp.undesired_contacts,
@@ -199,11 +199,15 @@ class RewardsCfg:
         params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*"), "threshold": 700.0},
     )
     stand_still = RewTerm(func=mdp.stand_still_pose, weight=-0.05, params={"duration": 1.0, "command_name": "pose_command"})
-    time_efficiency_reward = RewTerm(
+    # Evaluation metrics
+    time_efficiency = RewTerm(
         func=mdp.time_efficiency_reward,
         weight=1.0,
         params={"command_name": "pose_command"}
     )
+    energy_consumption = RewTerm(func=mdp.energy_consumption_per_distance, weight=-1.0e-5)
+    mechanical_power = RewTerm(func=mdp.mech_power, weight=-1.0e-7, params={"recuperation": 0.4})
+    path_efficiency = RewTerm(func=mdp.path_efficiency, weight=1.0, params={"command_name": "pose_command"})
 
 @configclass
 class TerminationsCfg:
