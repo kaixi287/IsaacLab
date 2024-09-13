@@ -364,7 +364,7 @@ def energy_consumption_per_distance(env: ManagerBasedRLEnv, asset_cfg: SceneEnti
     # Compute the sum of squared joint torques for each environment (proxy for energy consumption)
     torque_squared = torch.sum(torch.square(asset.data.applied_torque), dim=1)  # (batch_size,)
 
-    distance_traveled = torch.norm(asset.data.root_pos_w[:, :2] - asset.prev_root_pos_w[:, :2], dim=1)  # (batch_size,)
+    distance_traveled = torch.norm(asset.data.root_pos_w[:, :2] - asset.data.prev_root_pos_w[:, :2], dim=1)  # (batch_size,)
 
     # Avoid division by zero: Set a minimum distance traveled threshold
     energy_per_distance = torque_squared / (distance_traveled + 1e-8)
@@ -415,7 +415,7 @@ def path_efficiency(env: ManagerBasedRLEnv, command_name: str, asset_cfg: SceneE
     straight_line_distance = command.initial_to_goal_distance
 
     # Distance traveled in the current step
-    step_distance = torch.norm(asset.data.root_pos_w[:, :2] - asset.prev_root_pos_w[:, :2], dim=1)  # (batch_size,)
+    step_distance = torch.norm(asset.data.root_pos_w[:, :2] - asset.data.prev_root_pos_w[:, :2], dim=1)  # (batch_size,)
 
     # Calculate path efficiency (closer to 1 means more efficient path)
     path_efficiency = straight_line_distance / (step_distance + 1e-8)
