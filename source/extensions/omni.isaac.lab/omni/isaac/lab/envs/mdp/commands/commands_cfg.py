@@ -8,7 +8,7 @@ from dataclasses import MISSING
 
 from omni.isaac.lab.managers import CommandTermCfg
 from omni.isaac.lab.markers import VisualizationMarkersCfg
-from omni.isaac.lab.markers.config import BLUE_ARROW_X_MARKER_CFG, FRAME_MARKER_CFG, GREEN_ARROW_X_MARKER_CFG, WHITE_ARROW_X_MARKER_CFG
+from omni.isaac.lab.markers.config import BLUE_ARROW_X_MARKER_CFG, FRAME_MARKER_CFG, GREEN_ARROW_X_MARKER_CFG, WHITE_ARROW_X_MARKER_CFG, ORANGE_SPHERE_MARKER_CFG
 from omni.isaac.lab.utils import configclass
 
 from .null_command import NullCommand
@@ -209,13 +209,10 @@ class UniformPose2dCommandCfg(CommandTermCfg):
     polar_ranges: PolarRanges = MISSING
     """Distribution ranges for the polar position commands."""
     
-    goal_pose_visualizer_cfg: VisualizationMarkersCfg = GREEN_ARROW_X_MARKER_CFG.replace(
+    goal_pose_visualizer_cfg: VisualizationMarkersCfg = ORANGE_SPHERE_MARKER_CFG.replace(
         prim_path="/Visuals/Command/pose_goal"
     )
     """The configuration for the goal pose visualization marker. Defaults to GREEN_ARROW_X_MARKER_CFG."""
-
-    # Set the scale of the visualization markers to (0.2, 0.2, 0.8)
-    goal_pose_visualizer_cfg.markers["arrow"].scale = (0.2, 0.2, 0.8)
 
     curr_pose_visualizer_cfg: VisualizationMarkersCfg = BLUE_ARROW_X_MARKER_CFG.replace(
         prim_path="/Visuals/Command/pose_curr"
