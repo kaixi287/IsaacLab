@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING
 from omni.isaac.lab.assets import Articulation
 from omni.isaac.lab.managers import CommandTerm
 from omni.isaac.lab.markers import VisualizationMarkers
-from omni.isaac.lab.markers.config import GREEN_ARROW_X_MARKER_CFG, BLUE_ARROW_X_MARKER_CFG, ORANGE_SPHERE_MARKER_CFG, GREEN_SPHERE_MARKER_CFG, WHITE_ARROW_X_MARKER_CFG
 from omni.isaac.lab.terrains import TerrainImporter
 from omni.isaac.lab.utils.math import quat_from_euler_xyz, quat_rotate_inverse, wrap_to_pi, yaw_quat
 
@@ -159,49 +158,34 @@ class UniformPose2dCommand(CommandTerm):
     def _set_debug_vis_impl(self, debug_vis: bool):
         # create markers if necessary for the first tome
         if debug_vis:
-            if not hasattr(self, "arrow_goal_visualizer"):
-                if self.cfg.include_heading:
-                    # Use arrow marker for the target position with heading
-                    marker_cfg = GREEN_ARROW_X_MARKER_CFG.copy()
-                    marker_cfg.markers["arrow"].scale = (0.2, 0.2, 0.8)
-                else:
-                    # Use sphere marker for the target position without heading
-                    marker_cfg = ORANGE_SPHERE_MARKER_CFG.copy()
-                marker_cfg.prim_path = "/Visuals/Command/pose_goal"
-                self.arrow_goal_visualizer = VisualizationMarkers(marker_cfg)
-                # -- current base pose
-                # marker_cfg = CURR_POSITION_MARKER_CFG.copy()
-                marker_cfg = BLUE_ARROW_X_MARKER_CFG.copy()
-                marker_cfg.markers["arrow"].scale = (0.2, 0.2, 0.8)
-                marker_cfg.prim_path = "/Visuals/Command/pose_current"
-                self.curr_pose_visualizer = VisualizationMarkers(marker_cfg)
-                
-                # White arrow connecting the robot to the target, the scale will be updated in the callback
-                marker_cfg = WHITE_ARROW_X_MARKER_CFG.copy()
-                marker_cfg.markers["arrow"].scale = (1.0, 1.0, 1.0)
-                marker_cfg.prim_path = "/Visuals/Command/pose_connection"
-                self.connection_visualizer = VisualizationMarkers(marker_cfg)
-                
+            if not hasattr(self, "goal_pose_visualizer"):
+                self.goal_pose_visualizer = VisualizationMarkers(self.cfg.goal_pose_visualizer_cfg)
+            if not hasattr(self, "curr_pose_visualizer"):
+                self.curr_pose_visualizer = VisualizationMarkers(self.cfg.curr_pose_visualizer_cfg)
+            if self.cfg.connection_visualizer_cfg is not None and not hasattr(self, "connection_visualizer"):
+                self.connection_visualizer = VisualizationMarkers(self.cfg.connection_visualizer_cfg)
             # set their visibility to true
-            self.arrow_goal_visualizer.set_visibility(True)
+            self.goal_pose_visualizer.set_visibility(True)
             self.curr_pose_visualizer.set_visibility(True)
             self.connection_visualizer.set_visibility(True)
         else:
-            if hasattr(self, "arrow_goal_visualizer"):
-                self.arrow_goal_visualizer.set_visibility(False)
+            if hasattr(self, "goal_pose_visualizer"):
+                self.goal_pose_visualizer.set_visibility(False)
+            if hasattr(self, "curr_pose_visualizer"):
                 self.curr_pose_visualizer.set_visibility(False)
+            if hasattr(self, "connection_visualizer"):
                 self.connection_visualizer.set_visibility(False)
 
     def _debug_vis_callback(self, event):
         # update the box marker
         _pos_command_w = self._pos_command_w.clone()
         _pos_command_w[:, 2] += 0.5
-        self.arrow_goal_visualizer.visualize(
+        self.goal_pose_visualizer.visualize(
             translations=_pos_command_w,
             orientations=quat_from_euler_xyz(
-                torch.zeros_like(self._heading_command_w),
-                torch.zeros_like(self._heading_command_w),
-                self._heading_command_w,
+                torch.zeros_like(self.heading_command_w),
+                torch.zeros_like(self.heading_command_w),
+                self.heading_command_w,
             ),
         )
 
@@ -216,27 +200,28 @@ class UniformPose2dCommand(CommandTerm):
         base_quat_w = self.robot.data.root_quat_w
         # display markers
         self.curr_pose_visualizer.visualize(base_pos_w, base_quat_w)
-        
-        # Visualize the white arrow connecting the robot to the target position
-        direction_vector = _pos_command_w - base_pos_w  # Vector from robot to target
-        distance = torch.norm(direction_vector, dim=-1, keepdim=True)  # Compute distance
-        yaw_angles = torch.atan2(direction_vector[:, 1], direction_vector[:, 0])
-    
-        # Compute orientation using the provided quat_from_euler_xyz function
-        connection_orientations = quat_from_euler_xyz(
-            roll=torch.zeros_like(yaw_angles),  # No roll
-            pitch=torch.zeros_like(yaw_angles), # No pitch
-            yaw=yaw_angles                      # Yaw angle derived from direction vector
-        )
-        
-        # Scale the arrow to span the distance between robot and target
-        connection_scales = torch.cat([distance, torch.full_like(distance, 0.03),torch.full_like(distance, 0.03)], dim=-1)
-        
-        self.connection_visualizer.visualize(
-            translations=base_pos_w + (_pos_command_w - base_pos_w) * 0.25,  # Midpoint between robot and target
-            orientations=connection_orientations,
-            scales=connection_scales
-        )
+
+        # Visualize the connection between the robot and the goal
+        if hasattr(self, "connection_visualizer"):
+            direction_vector = _pos_command_w - base_pos_w  # Vector from robot to target
+            distance = torch.norm(direction_vector, dim=-1, keepdim=True)  # Compute distance
+            yaw_angles = torch.atan2(direction_vector[:, 1], direction_vector[:, 0])
+            
+            # Compute orientation using the provided quat_from_euler_xyz function
+            connection_orientations = quat_from_euler_xyz(
+                roll=torch.zeros_like(yaw_angles),  # No roll
+                pitch=torch.zeros_like(yaw_angles), # No pitch
+                yaw=yaw_angles                      # Yaw angle derived from direction vector
+            )
+            
+            # Scale the arrow to span the distance between robot and target
+            connection_scales = torch.cat([distance, torch.full_like(distance, 0.03),torch.full_like(distance, 0.03)], dim=-1)
+            
+            self.connection_visualizer.visualize(
+                translations=base_pos_w + (_pos_command_w - base_pos_w) * 0.25,  # Midpoint between robot and target
+                orientations=connection_orientations,
+                scales=connection_scales
+            )
 
 
 class TerrainBasedPose2dCommand(UniformPose2dCommand):
