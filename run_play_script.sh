@@ -12,7 +12,6 @@ load_mlp_runs=(
     "2024-09-04_17-29-51_mlp_rand_time"
 )
 
-
 # Array of load_run arguments
 load_rnn_runs=(
     # "2024-09-04_15-51-56_rnn_aug_time"
@@ -45,5 +44,5 @@ for run in "${load_rnn_runs[@]}"; do
     ./docker/cluster/cluster_interface.sh job base --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 8 --seed 100 --video --video_length 2000 --actor_critic_class_name ActorCriticRecurrent --checkpoint model_1200.pt
     
     # Wait for 10 minutes (600 seconds) before running the next command
-    sleep 400
+    sleep 350
 done
