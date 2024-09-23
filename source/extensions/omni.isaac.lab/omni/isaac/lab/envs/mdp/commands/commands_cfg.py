@@ -225,8 +225,13 @@ class UniformPose2dCommandCfg(CommandTermCfg):
     # Set the scale of the visualization markers to (0.2, 0.2, 0.8)
     curr_pose_visualizer_cfg.markers["arrow"].scale = (0.2, 0.2, 0.8)
 
-    connection_visualizer_cfg: VisualizationMarkersCfg | None = None
+    connection_visualizer_cfg: VisualizationMarkersCfg | None = WHITE_ARROW_X_MARKER_CFG.replace(
+        prim_path="/Visuals/Command/pose_connection"
+    )
     """The configuration for the current and goal pose connection visualization marker. Defaults to None."""
+
+    # Set the scale of the visualization markers to (1.0, 1.0, 1.0)
+    # connection_visualizer_cfg.markers["arrow"].scale = (1.0, 1.0, 1.0)
 
 
 @configclass
