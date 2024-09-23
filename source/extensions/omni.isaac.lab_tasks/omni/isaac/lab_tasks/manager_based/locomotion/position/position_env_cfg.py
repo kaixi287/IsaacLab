@@ -138,13 +138,13 @@ class EventCfg:
         },
     )
 
-    block_joint = EventTerm(
-        func=mdp.block_joint,
+    disable_joint = EventTerm(
+        func=mdp.disable_joint,
         mode="reset",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "joint_to_block": [0, 4, 8], # Index of joint to disable
-            "prob_no_block": 0.2,
+            "joint_to_disable": [0, 4, 8], # Index of joint to disable
+            "prob_no_disable": 0.2,
         },
     )
 
