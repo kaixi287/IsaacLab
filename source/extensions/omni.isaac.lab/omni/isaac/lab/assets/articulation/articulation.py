@@ -498,6 +498,7 @@ class Articulation(AssetBase):
         stiffness: torch.Tensor | float,
         joint_ids: Sequence[int] | slice | None = None,
         env_ids: Sequence[int] | None = None,
+        allow_double_indexing: bool = True,
     ):
         """Write joint stiffness into the simulation.
 
@@ -515,7 +516,7 @@ class Articulation(AssetBase):
         if joint_ids is None:
             joint_ids = slice(None)
         # broadcast env_ids if needed to allow double indexing
-        if env_ids != slice(None) and joint_ids != slice(None):
+        if env_ids != slice(None) and joint_ids != slice(None) and allow_double_indexing:
             env_ids = env_ids[:, None]
         # set into internal buffers
         self._data.joint_stiffness[env_ids, joint_ids] = stiffness
@@ -527,6 +528,7 @@ class Articulation(AssetBase):
         damping: torch.Tensor | float,
         joint_ids: Sequence[int] | slice | None = None,
         env_ids: Sequence[int] | None = None,
+        allow_double_indexing: bool = True,
     ):
         """Write joint damping into the simulation.
 
@@ -546,7 +548,7 @@ class Articulation(AssetBase):
         if joint_ids is None:
             joint_ids = slice(None)
         # broadcast env_ids if needed to allow double indexing
-        if env_ids != slice(None) and joint_ids != slice(None):
+        if env_ids != slice(None) and joint_ids != slice(None) and allow_double_indexing:
             env_ids = env_ids[:, None]
         # set into internal buffers
         self._data.joint_damping[env_ids, joint_ids] = damping
@@ -1349,17 +1351,30 @@ class Articulation(AssetBase):
                 joint_indices=actuator.joint_indices,
             )
 
-            # get the disabled joint ids
-            disabled_joint_ids = None
+            # Initialize the disabled joint ids for the actuator model to -1 (no blockage)
+            relevant_disabled_joint_ids = torch.full((self.all_disabled_joints.shape[0],), -1, dtype=torch.long, device=self.all_disabled_joints.device)
+
             if hasattr(self, "all_disabled_joints"):
-                disabled_joint_ids = self.all_disabled_joints
-            
-            # compute joint command from the actuator model
+                # Check if the blocked joint is controlled by this actuator
+                is_disabled_joint_controlled = torch.isin(self.all_disabled_joints, actuator.joint_indices)
+
+                # For each joint in joints_to_disable, find its index in self.joint_indices
+                joints_to_disable = torch.where(actuator.joint_indices.unsqueeze(1) == self.all_disabled_joints[is_disabled_joint_controlled])[0]
+
+                relevant_disabled_joint_ids[is_disabled_joint_controlled] = joints_to_disable
+
+                if isinstance(actuator, ImplicitActuator):
+                    envs_to_disable = torch.nonzero(is_disabled_joint_controlled).squeeze()
+                    # the gains and limits are set into the simulation since actuator model is implicit
+                    self.write_joint_stiffness_to_sim(0.0, joint_ids=joints_to_disable, env_ids=envs_to_disable, allow_double_indexing=False)
+                    self.write_joint_damping_to_sim(0.0, joint_ids=joints_to_disable, env_ids=envs_to_disable, allow_double_indexing=False)
+
+            # Compute joint command from the actuator model
             control_action = actuator.compute(
                 control_action,
                 joint_pos=self._data.joint_pos[:, actuator.joint_indices],
                 joint_vel=self._data.joint_vel[:, actuator.joint_indices],
-                disabled_joint_ids = disabled_joint_ids
+                disabled_joint_ids=relevant_disabled_joint_ids
             )
             # update targets (these are set into the simulation)
             if control_action.joint_positions is not None:
