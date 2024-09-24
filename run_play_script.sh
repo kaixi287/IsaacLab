@@ -19,11 +19,12 @@ load_rnn_runs=(
     # "2024-09-05_16-24-54_rnn_aug_time"
     # "2024-09-06_11-41-30_rnn_aug_time"
     # "2024-09-06_14-25-17_rnn_aug_time"
-    "2024-09-06_11-02-12_rnn_aug_mid"
-    "2024-09-06_11-07-09_rnn_aug_mid"
-    "2024-09-06_11-12-52_rnn_aug_mid"
-    "2024-09-06_11-20-50_rnn_aug_mid"
-    "2024-09-06_11-34-18_rnn_aug_mid"
+    # "2024-09-06_11-02-12_rnn_aug_mid"
+    # "2024-09-06_11-07-09_rnn_aug_mid"
+    # "2024-09-06_11-12-52_rnn_aug_mid"
+    # "2024-09-06_11-20-50_rnn_aug_mid"
+    # "2024-09-06_11-34-18_rnn_aug_mid"
+    "2024-09-13_19-41-18_rnn_aug_mid"
 )
 
 # Loop through each load_run argument
