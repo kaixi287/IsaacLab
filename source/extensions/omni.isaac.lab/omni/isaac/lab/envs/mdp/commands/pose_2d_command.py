@@ -64,8 +64,6 @@ class UniformPose2dCommand(CommandTerm):
             self.heading_command_b = torch.zeros_like(self._heading_command_w)
             self.metrics["error_heading"] = torch.zeros(self.num_envs, device=self.device)
 
-        # torch.manual_seed(42)
-
     def __str__(self) -> str:
         msg = "PositionCommand:\n"
         msg += f"\tCommand dimension: {tuple(self.command.shape[1:])}\n"
@@ -162,18 +160,19 @@ class UniformPose2dCommand(CommandTerm):
             self.heading_command_b[:] = wrap_to_pi(self._heading_command_w - self.robot.data.heading_w)
 
     def _set_debug_vis_impl(self, debug_vis: bool):
-        # create markers if necessary for the first tome
         if debug_vis:
+            # create markers if necessary for the first tome
             if not hasattr(self, "goal_pose_visualizer"):
                 self.goal_pose_visualizer = VisualizationMarkers(self.cfg.goal_pose_visualizer_cfg)
+                self.goal_pose_visualizer.set_visibility(True)
+
             if not hasattr(self, "curr_pose_visualizer"):
                 self.curr_pose_visualizer = VisualizationMarkers(self.cfg.curr_pose_visualizer_cfg)
+                self.curr_pose_visualizer.set_visibility(True)
+
             if self.cfg.connection_visualizer_cfg is not None and not hasattr(self, "connection_visualizer"):
                 self.connection_visualizer = VisualizationMarkers(self.cfg.connection_visualizer_cfg)
-            # set their visibility to true
-            self.goal_pose_visualizer.set_visibility(True)
-            self.curr_pose_visualizer.set_visibility(True)
-            self.connection_visualizer.set_visibility(True)
+                self.connection_visualizer.set_visibility(True)
         else:
             if hasattr(self, "goal_pose_visualizer"):
                 self.goal_pose_visualizer.set_visibility(False)
