@@ -1351,15 +1351,19 @@ class Articulation(AssetBase):
                 joint_indices=actuator.joint_indices,
             )
 
-            # Initialize the disabled joint ids for the actuator model to -1 (no blockage)
+            # Initialize the disabled joint ids for the actuator model to -1, which means the joint should not be disabled
             relevant_disabled_joint_ids = torch.full((self.all_disabled_joints.shape[0],), -1, dtype=torch.long, device=self.all_disabled_joints.device)
 
             if hasattr(self, "all_disabled_joints"):
+                if actuator.joint_indices == slice(None):
+                    actuator_joint_indices = torch.arange(actuator.num_joints, device=self.all_disabled_joints.device)
+                else:
+                    actuator_joint_indices = actuator.joint_indices
                 # Check if the blocked joint is controlled by this actuator
-                is_disabled_joint_controlled = torch.isin(self.all_disabled_joints, actuator.joint_indices)
+                is_disabled_joint_controlled = torch.isin(self.all_disabled_joints, actuator_joint_indices)
 
-                # For each joint in joints_to_disable, find its index in self.joint_indices
-                joints_to_disable = torch.where(actuator.joint_indices.unsqueeze(1) == self.all_disabled_joints[is_disabled_joint_controlled])[0]
+                # For each joint in joints_to_disable, find its index in actuator joint indices
+                joints_to_disable = torch.where(actuator_joint_indices.unsqueeze(1) == self.all_disabled_joints[is_disabled_joint_controlled])[0]
 
                 relevant_disabled_joint_ids[is_disabled_joint_controlled] = joints_to_disable
 
