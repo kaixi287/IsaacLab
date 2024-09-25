@@ -61,7 +61,7 @@ class ImplicitActuator(ActuatorBase):
         pass
 
     def compute(
-        self, control_action: ArticulationActions, joint_pos: torch.Tensor, joint_vel: torch.Tensor, disabled_joint_ids: torch.Tensor
+        self, control_action: ArticulationActions, joint_pos: torch.Tensor, joint_vel: torch.Tensor, disabled_joint_ids: torch.Tensor | None = None
     ) -> ArticulationActions:
         """Compute the aproximmate torques for the actuated joint (physX does not compute this explicitly)."""
         # store approximate torques for reward computation
@@ -69,17 +69,18 @@ class ImplicitActuator(ActuatorBase):
         error_vel = control_action.joint_velocities - joint_vel
         self.computed_effort = self.stiffness * error_pos + self.damping * error_vel + control_action.joint_efforts
 
-        # Create a mask to filter out environments where no joint should be disabled
-        disable_mask = disabled_joint_ids != -1
+        if disabled_joint_ids is not None:
+            # Create a mask to filter out environments where no joint should be disabled
+            disable_mask = disabled_joint_ids != -1
 
-        # Only apply the mask if there are any joints to disable
-        if torch.any(disable_mask):
-            # Get the environments and joints to disable
-            envs_to_disable = torch.nonzero(disable_mask).squeeze()  # Indices of environments where a joint should be disabled
-            joints_to_disable = disabled_joint_ids[disable_mask]  # The corresponding joint indices to disable
+            # Only apply the mask if there are any joints to disable
+            if torch.any(disable_mask):
+                # Get the environments and joints to disable
+                envs_to_disable = torch.nonzero(disable_mask).squeeze()  # Indices of environments where a joint should be disabled
+                joints_to_disable = disabled_joint_ids[disable_mask]  # The corresponding joint indices to disable
 
-            # Set the effort to 0 for the disabled joints
-            self.computed_effort[envs_to_disable, joints_to_disable] = 0.0
+                # Set the effort to 0 for the disabled joints
+                self.computed_effort[envs_to_disable, joints_to_disable] = 0.0
 
         # clip the torques based on the motor limits
         self.applied_effort = self._clip_effort(self.computed_effort)

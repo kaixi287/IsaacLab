@@ -1351,21 +1351,25 @@ class Articulation(AssetBase):
                 joint_indices=actuator.joint_indices,
             )
 
-            # Initialize the disabled joint ids for the actuator model to -1, which means the joint should not be disabled
-            relevant_disabled_joint_ids = torch.full((self.all_disabled_joints.shape[0],), -1, dtype=torch.long, device=self.all_disabled_joints.device)
-
+            disabled_joint_ids = None
             if hasattr(self, "all_disabled_joints"):
+                # Initialize the disabled joint ids for the actuator model to -1, which means the joint should not be disabled
+                disabled_joint_ids = torch.full((self.all_disabled_joints.shape[0],), -1, dtype=torch.long, device=self.all_disabled_joints.device)
+
+                #  Get the joint indices of the actuator
                 if actuator.joint_indices == slice(None):
                     actuator_joint_indices = torch.arange(actuator.num_joints, device=self.all_disabled_joints.device)
                 else:
                     actuator_joint_indices = actuator.joint_indices
-                # Check if the blocked joint is controlled by this actuator
+
+                # Check if the joints to disable are controlled by this actuator
                 is_disabled_joint_controlled = torch.isin(self.all_disabled_joints, actuator_joint_indices)
 
                 # For each joint in joints_to_disable, find its index in actuator joint indices
                 joints_to_disable = torch.where(actuator_joint_indices.unsqueeze(1) == self.all_disabled_joints[is_disabled_joint_controlled])[0]
 
-                relevant_disabled_joint_ids[is_disabled_joint_controlled] = joints_to_disable
+                # Set the relevant disabled joint ids
+                disabled_joint_ids[is_disabled_joint_controlled] = joints_to_disable
 
                 if isinstance(actuator, ImplicitActuator):
                     envs_to_disable = torch.nonzero(is_disabled_joint_controlled).squeeze()
@@ -1378,7 +1382,7 @@ class Articulation(AssetBase):
                 control_action,
                 joint_pos=self._data.joint_pos[:, actuator.joint_indices],
                 joint_vel=self._data.joint_vel[:, actuator.joint_indices],
-                disabled_joint_ids=relevant_disabled_joint_ids
+                disabled_joint_ids=disabled_joint_ids
             )
             # update targets (these are set into the simulation)
             if control_action.joint_positions is not None:
