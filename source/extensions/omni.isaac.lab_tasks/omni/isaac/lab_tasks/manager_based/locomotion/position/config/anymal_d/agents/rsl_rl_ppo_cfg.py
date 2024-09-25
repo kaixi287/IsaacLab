@@ -43,7 +43,7 @@ class AnymalDPosTrackingEnvPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         lr_decay=0.5,
         # -- Symmetry Augmentation
         symmetry_cfg=dict(
-            use_data_augmentation=True,  # this adds symmetric trajectories to the batch
+            use_data_augmentation=False,  # this adds symmetric trajectories to the batch
             use_mirror_loss=False,  # this adds symmetry loss term to the loss function
             data_augmentation_func="omni.isaac.lab_tasks.manager_based.locomotion.position.config.anymal_d.symmetry:get_symmetric_states",  # specify the data augmentation function if any
             mirror_loss_coeff=0.0  # coefficient for symmetry loss term
