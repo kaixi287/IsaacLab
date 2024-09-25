@@ -112,7 +112,7 @@ class Articulation(AssetBase):
         self._debug_vis_handle = None
         
         # set initial state of debug visualization
-        self.set_debug_vis(debug_vis=self.cfg.debug_vis)
+        self.set_debug_vis(debug_vis=True)
 
     def __del__(self):
         """Unsubscribe from the callbacks."""
@@ -228,8 +228,8 @@ class Articulation(AssetBase):
             self.external_force_positions = torch.zeros((len(env_ids), 3), device=positions.device)
 
         # Update the external forces and positions for the specified environments
-        self.external_forces[env_ids] = forces
-        self.external_force_positions[env_ids] = positions
+        self.external_forces[env_ids] = forces.squeeze(1)
+        self.external_force_positions[env_ids] = positions.squeeze(1)
     
     def _set_debug_vis_impl(self, debug_vis: bool):
         # create markers if necessary
@@ -254,7 +254,7 @@ class Articulation(AssetBase):
             if not hasattr(self, "green_force_marker"):
                     green_arrow_marker_cfg = GREEN_ARROW_X_MARKER_CFG.copy()
                     green_arrow_marker_cfg.prim_path = "/Visuals/ExternalForce"
-                    green_arrow_marker_cfg.marker.scale = (0.1, 0.1, 1.0)
+                    green_arrow_marker_cfg.markers["arrow"].scale = (0.1, 0.1, 0.1)
                     self.green_force_marker = VisualizationMarkers(green_arrow_marker_cfg)
             self.green_force_marker.set_visibility(True)
 
@@ -263,6 +263,7 @@ class Articulation(AssetBase):
                 if not hasattr(self, "yellow_force_marker"):
                     yellow_arrow_marker_cfg = YELLOW_ARROW_Z_MARKER_CFG.copy()
                     yellow_arrow_marker_cfg.prim_path = "/Visuals/ExternalForce"
+                    yellow_arrow_marker_cfg.markers["arrow"].scale = (0.1, 0.1, 0.1)
                     self.yellow_force_marker = VisualizationMarkers(yellow_arrow_marker_cfg)
                 self.yellow_force_marker.set_visibility(True)
                 
