@@ -659,7 +659,13 @@ def add_payload_to_base(
         asset_cfg: Configuration for the asset (robot).
     """
     # extract the used quantities (to enable type-hinting)
-    asset: RigidObject | Articulation = env.scene[asset_cfg.name]
+    asset: Articulation = env.scene[asset_cfg.name]
+
+    if not isinstance(asset, Articulation):
+        raise ValueError(
+            f"Event term 'disable_joint' not supported for asset: '{asset_cfg.name}'"
+            f" with type: '{type(asset)}'."
+        )
     
     # resolve environment ids
     if env_ids is None:
@@ -692,6 +698,7 @@ def add_payload_to_base(
 
     # set the forces and torques into the buffers
     asset.set_external_force_and_torque(forces, torques, env_ids=env_ids, body_ids=asset_cfg.body_ids)
+    asset.update_external_force(env_ids, forces, positions)
 
 
 def push_by_setting_velocity(
