@@ -643,6 +643,70 @@ def apply_external_force_torque(
     # note: these are only applied when you call: `asset.write_data_to_sim()`
     asset.set_external_force_and_torque(forces, torques, env_ids=env_ids, body_ids=asset_cfg.body_ids)
 
+def add_payload_to_base(
+    env: ManagerBasedEnv,
+    env_ids: torch.Tensor,
+    mass_range: tuple[float, float],
+    x_position_range: tuple[float, float],
+    y_position_range: tuple[float, float],
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot", body_names="base"),
+):
+    """Simulate a payload being carried by the robot by applying forces and computing corresponding torques.
+
+    This function samples random masses (representing payload weight) and x, y positions (representing payload placement)
+    sampled from the given ranges. It fixes the z position to the base surface (z=0). Forces are computed based on the mass
+    and gravity, while torques are computed as the cross-product of the position and the force.
+
+    Args:
+        env: The environment object.
+        env_ids: The environment IDs to apply the randomization to.
+        mass_range: Range of possible masses for the payload.
+        x_position_range: Range of x-position for the payload relative to the base center.
+        y_position_range: Range of y-position for the payload relative to the base center.
+        asset_cfg: Configuration for the asset (robot).
+    """
+    # extract the used quantities (to enable type-hinting)
+    asset: Articulation = env.scene[asset_cfg.name]
+
+    if not isinstance(asset, Articulation):
+        raise ValueError(
+            f"Event term 'disable_joint' not supported for asset: '{asset_cfg.name}'"
+            f" with type: '{type(asset)}'."
+        )
+    
+    # resolve environment ids
+    if env_ids is None:
+        env_ids = torch.arange(env.scene.num_envs, device=asset.device)
+    
+    # resolve number of bodies
+    num_bodies = len(asset_cfg.body_ids) if isinstance(asset_cfg.body_ids, list) else asset.num_bodies
+
+    # sample random masses (representing the payload weight)
+    masses = math_utils.sample_uniform(*mass_range, (len(env_ids), num_bodies, 1), asset.device)
+
+    # Get the gravity from the physics scene (assuming it's constant)
+    gravity = torch.tensor(env.sim.cfg.gravity, device=asset.device).expand(len(env_ids), num_bodies, -1)
+
+    # Compute forces by multiplying the mass with gravity, apply only in z-direction
+    forces = masses * gravity  # (num_envs, num_bodies, 3)
+
+    # sample random x, y positions for the payload relative to the base
+    x_positions = math_utils.sample_uniform(*x_position_range, (len(env_ids), num_bodies, 1), asset.device)
+    y_positions = math_utils.sample_uniform(*y_position_range, (len(env_ids), num_bodies, 1), asset.device)
+    
+    # Simulate payload applied on the base surface, using a base height of 0.265 as specified in the urdf under https://github.com/ANYbotics/anymal_d_simple_description
+    z_positions = torch.full((len(env_ids), num_bodies, 1), 0.265 / 2, device=asset.device)
+    
+    # Concatenate x, y, and z to form the position vectors
+    positions = torch.cat([x_positions, y_positions, z_positions], dim=-1)
+
+    # compute torques as the cross-product of position and force
+    torques = torch.cross(positions, forces, dim=-1)
+
+    # set the forces and torques into the buffers
+    asset.set_external_force_and_torque(forces, torques, env_ids=env_ids, body_ids=asset_cfg.body_ids)
+    asset.update_external_force(env_ids, forces, positions)
+
 
 def push_by_setting_velocity(
     env: ManagerBasedEnv,

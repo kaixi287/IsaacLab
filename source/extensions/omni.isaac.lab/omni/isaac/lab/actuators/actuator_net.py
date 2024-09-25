@@ -76,7 +76,7 @@ class ActuatorNetLSTM(DCMotor):
             self.sea_cell_state_per_env[:, env_ids] = 0.0
 
     def compute(
-        self, control_action: ArticulationActions, joint_pos: torch.Tensor, joint_vel: torch.Tensor, disabled_joint_ids: torch.Tensor
+        self, control_action: ArticulationActions, joint_pos: torch.Tensor, joint_vel: torch.Tensor, disabled_joint_ids: torch.Tensor | None = None
     ) -> ArticulationActions:
         # compute network inputs
         self.sea_input[:, 0, 0] = (control_action.joint_positions - joint_pos).flatten()
@@ -91,16 +91,17 @@ class ActuatorNetLSTM(DCMotor):
             )
         self.computed_effort = torques.reshape(self._num_envs, self.num_joints)
 
-        # Create a mask to filter out environments where no joint should be disabled
-        disable_mask = disabled_joint_ids != -1
+        if disabled_joint_ids is not None:
+            # Create a mask to filter out environments where no joint should be disabled
+            disable_mask = disabled_joint_ids != -1
 
-        # Mask the effort for the valid joint IDs
-        if torch.any(disable_mask):
-            envs_to_disable = torch.nonzero(disable_mask).squeeze()
-            joints_to_disable = disabled_joint_ids[disable_mask]  # The corresponding joint indices to disable
+            # Mask the effort for the valid joint IDs
+            if torch.any(disable_mask):
+                envs_to_disable = torch.nonzero(disable_mask).squeeze()
+                joints_to_disable = disabled_joint_ids[disable_mask]  # The corresponding joint indices to disable
 
-            # Set the effort to 0 for the disabled joints
-            self.computed_effort[envs_to_disable, joints_to_disable] = 0.0
+                # Set the effort to 0 for the disabled joints
+                self.computed_effort[envs_to_disable, joints_to_disable] = 0.0
 
         # clip the computed effort based on the motor limits
         self.applied_effort = self._clip_effort(self.computed_effort)

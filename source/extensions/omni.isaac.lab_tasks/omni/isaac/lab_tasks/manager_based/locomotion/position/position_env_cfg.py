@@ -138,15 +138,26 @@ class EventCfg:
         },
     )
 
-    disable_joint = EventTerm(
-        func=mdp.disable_joint,
+    add_payload_to_base = EventTerm(
+        func=mdp.add_payload_to_base,
         mode="reset",
         params={
-            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "joint_to_disable": [0, 4, 8], # Index of joint to disable
-            "prob_no_disable": 0.2,
+            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+            "mass_range": (0.0, 5.0),
+            "x_position_range": (0.0, 0.4),
+            "y_position_range": (0.0, 0.08),
         },
     )
+
+    # disable_joint = EventTerm(
+    #     func=mdp.disable_joint,
+    #     mode="reset",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+    #         "joint_to_disable": [0, 4, 8], # Index of joint to disable
+    #         "prob_no_disable": 0.2,
+    #     },
+    # )
 
 @configclass
 class RewardsCfg:
