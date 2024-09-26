@@ -112,7 +112,7 @@ class Articulation(AssetBase):
         self._debug_vis_handle = None
         
         # set initial state of debug visualization
-        self.set_debug_vis(debug_vis=True)
+        self.set_debug_vis(debug_vis=self.cfg.debug_vis)
 
     def __del__(self):
         """Unsubscribe from the callbacks."""
@@ -254,7 +254,7 @@ class Articulation(AssetBase):
             if not hasattr(self, "green_force_marker"):
                     green_arrow_marker_cfg = GREEN_ARROW_X_MARKER_CFG.copy()
                     green_arrow_marker_cfg.prim_path = "/Visuals/ExternalForce"
-                    green_arrow_marker_cfg.markers["arrow"].scale = (0.1, 0.1, 0.1)
+                    green_arrow_marker_cfg.markers["arrow"].scale = (0.1, 0.1, 1.0)
                     self.green_force_marker = VisualizationMarkers(green_arrow_marker_cfg)
             self.green_force_marker.set_visibility(True)
 
@@ -263,7 +263,7 @@ class Articulation(AssetBase):
                 if not hasattr(self, "yellow_force_marker"):
                     yellow_arrow_marker_cfg = YELLOW_ARROW_Z_MARKER_CFG.copy()
                     yellow_arrow_marker_cfg.prim_path = "/Visuals/ExternalForce"
-                    yellow_arrow_marker_cfg.markers["arrow"].scale = (0.1, 0.1, 0.1)
+                    yellow_arrow_marker_cfg.markers["arrow"].scale = (0.1, 0.1, 1.0)
                     self.yellow_force_marker = VisualizationMarkers(yellow_arrow_marker_cfg)
                 self.yellow_force_marker.set_visibility(True)
                 
@@ -358,23 +358,27 @@ class Articulation(AssetBase):
                 in_distribution_force_quat_w = external_force_quat_w[in_distribution_mask]
 
                 # Scale and visualize the forces as yellow arrows
-                self.yellow_force_marker.visualize(translations=in_distribution_force_pos_w, orientations=in_distribution_force_quat_w, scales=in_distribution_force_scales)
+                self.yellow_force_marker.visualize(translations=in_distribution_force_pos_w, orientations=in_distribution_force_quat_w)
                 self.yellow_force_marker.set_visibility(True)
             else:
                 self.yellow_force_marker.set_visibility(False)
 
-            if torch.any(~in_distribution_mask):
+            ood_mask = ~in_distribution_mask
+            if torch.any(ood_mask):
                 # Visualize out-of-distribution forces in green
-                ood_forces = self.external_forces[~in_distribution_mask]
+                ood_forces = self.external_forces[ood_mask]
                 ood_force_scales = torch.norm(ood_forces, dim=-1, keepdim=True)
-                ood_force_pos_w = external_force_pos_w[~in_distribution_mask]
-                ood_force_quat_w = external_force_quat_w[~in_distribution_mask]
+                ood_force_pos_w = external_force_pos_w[ood_mask]
+                ood_force_quat_w = external_force_quat_w[ood_mask]
 
                 # Scale and visualize the forces as green arrows
                 self.green_force_marker.visualize(translations=ood_force_pos_w, orientations=ood_force_quat_w, scales=ood_force_scales)
                 self.green_force_marker.set_visibility(True)
             else:
                 self.green_force_marker.set_visibility(False)
+        else:
+            self.yellow_force_marker.set_visibility(False)
+            self.green_force_marker.set_visibility(False)
 
                     
     """
