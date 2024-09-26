@@ -129,13 +129,26 @@ class IdealPDActuator(ActuatorBase):
         pass
 
     def compute(
-        self, control_action: ArticulationActions, joint_pos: torch.Tensor, joint_vel: torch.Tensor
+        self, control_action: ArticulationActions, joint_pos: torch.Tensor, joint_vel: torch.Tensor, disabled_joint_ids: torch.Tensor | None = None
     ) -> ArticulationActions:
         # compute errors
         error_pos = control_action.joint_positions - joint_pos
         error_vel = control_action.joint_velocities - joint_vel
         # calculate the desired joint torques
         self.computed_effort = self.stiffness * error_pos + self.damping * error_vel + control_action.joint_efforts
+        # Set the effort to 0 for the disabled joints
+        if disabled_joint_ids is not None:
+            # Create a mask to filter out environments where no joint should be disabled
+            disable_mask = disabled_joint_ids != -1
+
+            # Mask the effort for the valid joint IDs
+            if torch.any(disable_mask):
+                envs_to_disable = torch.nonzero(disable_mask).squeeze()
+                joints_to_disable = disabled_joint_ids[disable_mask]  # The corresponding joint indices to disable
+
+                # Set the effort to 0 for the disabled joints
+                self.computed_effort[envs_to_disable, joints_to_disable] = 0.0
+
         # clip the torques based on the motor limits
         self.applied_effort = self._clip_effort(self.computed_effort)
         # set the computed actions back into the control action
