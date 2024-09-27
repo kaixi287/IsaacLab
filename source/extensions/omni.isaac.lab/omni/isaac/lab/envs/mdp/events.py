@@ -686,6 +686,23 @@ def add_payload_to_base(
     # sample random x, y positions for the payload relative to the base
     x_positions = math_utils.sample_uniform(*x_position_range, (len(env_ids), num_bodies, 1), asset.device)
     y_positions = math_utils.sample_uniform(*y_position_range, (len(env_ids), num_bodies, 1), asset.device)
+
+    # OOD sampling
+    while True:
+        # Create a mask for positive x and positive y values
+        positive_x_mask = x_positions > 0
+        positive_y_mask = y_positions > 0
+
+        # Find conflicting elements where both x and y are positive
+        conflict_mask = positive_x_mask & positive_y_mask
+
+        # If no conflict exists, exit the loop
+        if not torch.any(conflict_mask):
+            break
+
+        # Resample x and y where the conflict mask is true
+        x_positions[conflict_mask] = math_utils.sample_uniform(*x_position_range, x_positions[conflict_mask].shape, asset.device)
+        y_positions[conflict_mask] = math_utils.sample_uniform(*y_position_range, y_positions[conflict_mask].shape, asset.device)
     
     # Simulate payload applied on the base surface, using a base height of 0.265 as specified in the urdf under https://github.com/ANYbotics/anymal_d_simple_description
     z_positions = torch.full((len(env_ids), num_bodies, 1), 0.265 / 2, device=asset.device)

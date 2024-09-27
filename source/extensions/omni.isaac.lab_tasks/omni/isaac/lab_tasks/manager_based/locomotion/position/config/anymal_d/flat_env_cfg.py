@@ -87,4 +87,8 @@ class AnymalDPosTrackingFlatEnvCfg_PLAY(AnymalDPosTrackingFlatEnvCfg):
         self.scene.env_spacing = 2.5
         # disable randomization for play
         self.observations.policy.enable_corruption = False
-        self.events.block_joint.params["prob_no_block"] = 0.0
+        if hasattr(self.events, "disable_joint"):
+            self.events.disable_joint.params["prob_no_block"] = 0.0
+        # if hasattr(self.events, "add_payload_to_base"):
+        #     self.events.add_payload_to_base.params["x_position_range"] = (-0.4, 0.4)
+        #     self.events.add_payload_to_base.params["y_position_range"] = (-0.08, 0.08)
