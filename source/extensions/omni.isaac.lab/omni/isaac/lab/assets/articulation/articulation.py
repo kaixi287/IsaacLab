@@ -335,7 +335,7 @@ class Articulation(AssetBase):
         
         # Check if there are external forces to process
         if hasattr(self, "external_forces"):
-
+            # Get the external force positions and orientations in world frame
             external_force_pos_w, external_force_quat_w = math_utils.combine_frame_transforms(
                     self.data.root_pos_w,
                     self.data.root_quat_w,
@@ -377,8 +377,10 @@ class Articulation(AssetBase):
             else:
                 self.green_force_marker.set_visibility(False)
         else:
-            self.yellow_force_marker.set_visibility(False)
-            self.green_force_marker.set_visibility(False)
+            if hasattr(self, "yellow_force_marker"):
+                self.yellow_force_marker.set_visibility(False)
+            if hasattr(self, "green_force_marker"):
+                self.green_force_marker.set_visibility(False)
 
                     
     """
