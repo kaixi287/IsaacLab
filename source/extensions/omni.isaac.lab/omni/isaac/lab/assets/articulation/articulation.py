@@ -25,7 +25,7 @@ import omni.isaac.lab.utils.string as string_utils
 from omni.isaac.lab.actuators import ActuatorBase, ActuatorBaseCfg, ImplicitActuator
 
 from omni.isaac.lab.markers import VisualizationMarkers
-from omni.isaac.lab.markers.config import YELLOW_JOINT_MARKER_CFG, GREEN_JOINT_MARKER_CFG, PINK_JOINT_MARKER_CFG
+from omni.isaac.lab.markers.config import YELLOW_JOINT_MARKER_CFG, GREEN_JOINT_MARKER_CFG, YELLOW_ARROW_Z_MARKER_CFG, GREEN_ARROW_X_MARKER_CFG
 
 from ..asset_base import AssetBase
 from .articulation_data import ArticulationData
@@ -101,6 +101,8 @@ class Articulation(AssetBase):
         """
         # List to specify in-distribution joints (those to be visualized in pink)
         self.in_distribution_joint_ids = [0, 4, 8]
+        # Define the in-distribution position range for x and y for external forces applied on the base
+        self.in_distribution_external_force_positions = [(0.0, 0.4), (0.0, 0.08), (-torch.inf, torch.inf)]
 
         super().__init__(cfg)
         # data for storing actuator group
@@ -197,43 +199,86 @@ class Articulation(AssetBase):
     Visualization
     """
 
-    def update_blocked_joints(self, env_ids: torch.Tensor, joint_to_block: torch.Tensor):
+    def update_disabled_joints(self, env_ids: torch.Tensor, joint_to_disable: torch.Tensor):
         """Update the visibility of joint markers for a specific environment.
 
         Args:
             env_ids (torch.Tensor): Tensor of environment indices, expected shape (num_envs,).
-            joint_to_block (torch.Tensor): Tensor of joint IDs to block for env_ids, expected shape (num_envs, num_joints_to_block).
+            joint_to_disable (torch.Tensor): Tensor of joint IDs to disable for env_ids, expected shape (num_envs, num_joints_to_disable).
         """
-        if not hasattr(self, "all_blocked_joints"):
-            # Initialize all_blocked_joints tensor if it doesn't exist
-            self.all_blocked_joints = torch.full((len(env_ids),), -1, dtype=torch.int, device=joint_to_block.device)
+        if not hasattr(self, "all_disabled_joints"):
+            # Initialize all_disabled_joints tensor if it doesn't exist
+            self.all_disabled_joints = torch.full((len(env_ids),), -1, dtype=torch.int, device=joint_to_disable.device)
         
         # Update the joint IDs for the specified environments
-        self.all_blocked_joints[env_ids] = joint_to_block
+        self.all_disabled_joints[env_ids] = joint_to_disable
+    
+    def update_external_force(self, env_ids: torch.Tensor, forces: torch.Tensor, positions: torch.Tensor):
+        """Update the external forces and their corresponding positions for a specific environment.
+
+        Args:
+            env_ids (torch.Tensor): Tensor of environment indices, expected shape (num_envs,).
+            forces (torch.Tensor): Tensor of forces to apply for the environments, expected shape (num_envs, 3).
+            x_positions (torch.Tensor): Tensor of x positions of the force, expected shape (num_envs,).
+            y_positions (torch.Tensor): Tensor of y positions of the force, expected shape (num_envs,).
+        """
+        if not hasattr(self, "external_forces"):
+            # Initialize external_forces tensor if it doesn't exist
+            self.external_forces = torch.zeros((len(env_ids), 3), device=forces.device)
+            self.external_force_positions = torch.zeros((len(env_ids), 3), device=positions.device)
+
+        # Update the external forces and positions for the specified environments
+        self.external_forces[env_ids] = forces.squeeze(1)
+        self.external_force_positions[env_ids] = positions.squeeze(1)
     
     def _set_debug_vis_impl(self, debug_vis: bool):
         # create markers if necessary
         if debug_vis:
-            if not hasattr(self, "yellow_joint_marker"):
-                yellow_marker_cfg = YELLOW_JOINT_MARKER_CFG.copy()
-                yellow_marker_cfg.prim_path = "/Visuals/Joints/Yellow"
-                self.yellow_joint_marker = VisualizationMarkers(yellow_marker_cfg)
+            # Create markers for failed joints
+            if not hasattr(self, "green_joint_marker"):
+                green_marker_cfg = GREEN_JOINT_MARKER_CFG.copy()
+                green_marker_cfg.prim_path = "/Visuals/Joints/Green"
+                self.green_joint_marker = VisualizationMarkers(green_marker_cfg)
             # set visibility to true
-            self.yellow_joint_marker.set_visibility(True)
+            self.green_joint_marker.set_visibility(True)
             
-            # Create pink markers for in-distribution joints
+            # Use yellow markers for in-distribution failed joints
             if self.in_distribution_joint_ids:
-                if not hasattr(self, "pink_joint_marker"):
-                    pink_marker_cfg = GREEN_JOINT_MARKER_CFG.copy()
-                    pink_marker_cfg.prim_path = "/Visuals/Joints/Pink"
-                    self.pink_joint_marker = VisualizationMarkers(pink_marker_cfg)
-                self.pink_joint_marker.set_visibility(True)
+                if not hasattr(self, "yellow_joint_marker"):
+                    yellow_marker_cfg = YELLOW_JOINT_MARKER_CFG.copy()
+                    yellow_marker_cfg.prim_path = "/Visuals/Joints/Yellow"
+                    self.yellow_joint_marker = VisualizationMarkers(yellow_marker_cfg)
+                self.yellow_joint_marker.set_visibility(True)
+            
+            # Create arrow markers for external forces (payload)
+            if not hasattr(self, "green_force_marker"):
+                    green_arrow_marker_cfg = GREEN_ARROW_X_MARKER_CFG.copy()
+                    green_arrow_marker_cfg.prim_path = "/Visuals/ExternalForce"
+                    green_arrow_marker_cfg.markers["arrow"].scale = (0.1, 0.1, 1.0)
+                    self.green_force_marker = VisualizationMarkers(green_arrow_marker_cfg)
+            self.green_force_marker.set_visibility(True)
+
+            # Use yellow markers for in-distribution external forces
+            if self.in_distribution_external_force_positions:
+                if not hasattr(self, "yellow_force_marker"):
+                    yellow_arrow_marker_cfg = YELLOW_ARROW_Z_MARKER_CFG.copy()
+                    yellow_arrow_marker_cfg.prim_path = "/Visuals/ExternalForce"
+                    yellow_arrow_marker_cfg.markers["arrow"].scale = (0.1, 0.1, 1.0)
+                    self.yellow_force_marker = VisualizationMarkers(yellow_arrow_marker_cfg)
+                self.yellow_force_marker.set_visibility(True)
+                
         else:
+            # Set visibility of joint failure marker to false
+            if hasattr(self, "green_joint_marker"):
+                self.green_joint_marker.set_visibility(False)
             if hasattr(self, "yellow_joint_marker"):
                 self.yellow_joint_marker.set_visibility(False)
-            if self.in_distribution_joint_ids:
-                if hasattr(self, "pink_joint_marker"):
-                    self.pink_joint_marker.set_visibility(False)
+
+            # Set visibility of external force marker to false
+            if hasattr(self, "yellow_force_marker"):
+                self.yellow_force_marker.set_visibility(False)
+            if hasattr(self, "green_force_marker"):
+                self.green_force_marker.set_visibility(False)
 
     def _debug_vis_callback(self, event):
         # Check if the articulation is valid
@@ -241,47 +286,102 @@ class Articulation(AssetBase):
             return
 
         # Check if there are environments and joints to process
-        if hasattr(self, "all_blocked_joints"):
-            # Create a mask to filter out environments where no joint should be blocked
-            block_mask = self.all_blocked_joints != -1
+        if hasattr(self, "all_disabled_joints"):
+            # Create a mask to filter out environments where no joint should be disabled
+            disable_mask = self.all_disabled_joints != -1
 
-            if torch.any(block_mask):
-                # Filter link IDs to only include those that should be blocked
-                link_ids = self.all_blocked_joints[block_mask] + 1
+            if torch.any(disable_mask):
+                # Filter link IDs to only include those that should be disabled
+                link_ids = self.all_disabled_joints[disable_mask] + 1
 
-                # Get blocked joint positions only for the environments that should be blocked
+                # Get disabled joint positions only for the environments that should be disabled
                 link_transforms = self.root_physx_view.get_link_transforms()
-                blocked_joint_pos = link_transforms[block_mask.nonzero(as_tuple=False).squeeze(), link_ids, :3]
-                # (num_envs, num_joints_to_block, 3) --> (num_envs * num_joints_to_block, 3)
-                blocked_joint_pos = blocked_joint_pos.view(-1, 3)
+                disabled_joint_pos = link_transforms[disable_mask.nonzero(as_tuple=False).squeeze(), link_ids, :3]
+                # (num_envs, num_joints_to_disable, 3) --> (num_envs * num_joints_to_disable, 3)
+                disabled_joint_pos = disabled_joint_pos.view(-1, 3)
 
                 if self.in_distribution_joint_ids:
                     # Separate the joints for visualization
-                    in_distribution_mask = torch.isin(self.all_blocked_joints[block_mask], torch.tensor(self.in_distribution_joint_ids, device=self.device))
+                    in_distribution_mask = torch.isin(self.all_disabled_joints[disable_mask], torch.tensor(self.in_distribution_joint_ids, device=self.device))
 
                     if torch.any(in_distribution_mask):
-                        # Visualize in-distribution joints in pink
-                        pink_joint_pos = blocked_joint_pos[in_distribution_mask]
-                        self.pink_joint_marker.visualize(pink_joint_pos)
-                        self.pink_joint_marker.set_visibility(True)
-                    else:
-                        # Set visibility to false if no in-distribution joints are found
-                        self.pink_joint_marker.set_visibility(False)
-                    
-                    out_of_distribution_mask = ~in_distribution_mask
-                    if torch.any(out_of_distribution_mask):
-                        # Visualize out-of-distribution joints in yellow
-                        yellow_joint_pos = blocked_joint_pos[out_of_distribution_mask]
+                        # Visualize in-distribution joints in yellow
+                        yellow_joint_pos = disabled_joint_pos[in_distribution_mask]
                         self.yellow_joint_marker.visualize(yellow_joint_pos)
                         self.yellow_joint_marker.set_visibility(True)
                     else:
-                        # Set visibility to false if no out-of-distribution joints are found
+                        # Set visibility to false if no in-distribution joints are found
                         self.yellow_joint_marker.set_visibility(False)
+                    
+                    ood_mask = ~in_distribution_mask
+                    if torch.any(ood_mask):
+                        # Visualize out-of-distribution joints in green
+                        green_joint_pos = disabled_joint_pos[ood_mask]
+                        self.green_joint_marker.visualize(green_joint_pos)
+                        self.green_joint_marker.set_visibility(True)
+                    else:
+                        # Set visibility to false if no out-of-distribution joints are found
+                        self.green_joint_marker.set_visibility(False)
                 else:
                     # If no in-distribution joints are specified, visualize all in yellow
-                    self.yellow_joint_marker.visualize(blocked_joint_pos)
-                    self.yellow_joint_marker.set_visibility(True)
-                    self.pink_joint_marker.set_visibility(False)
+                    self.green_joint_marker.visualize(disabled_joint_pos)
+                    self.green_joint_marker.set_visibility(True)
+                    self.yellow_joint_marker.set_visibility(False)
+        else:
+            if hasattr(self, "green_joint_marker"):
+                self.green_joint_marker.set_visibility(False)
+            if hasattr(self, "yellow_joint_marker"):
+                self.yellow_joint_marker.set_visibility(False)
+        
+        # Check if there are external forces to process
+        if hasattr(self, "external_forces"):
+            # Get the external force positions and orientations in world frame
+            external_force_pos_w, external_force_quat_w = math_utils.combine_frame_transforms(
+                    self.data.root_pos_w,
+                    self.data.root_quat_w,
+                    self.external_force_positions
+                )
+
+            # Create masks for in-distribution and out-of-distribution positions
+            in_distribution_mask = (
+                (self.external_force_positions[:, 0] >= self.in_distribution_external_force_positions[0][0]) & 
+                (self.external_force_positions[:, 0] <= self.in_distribution_external_force_positions[0][1]) & 
+                (self.external_force_positions[:, 1] >= self.in_distribution_external_force_positions[1][0]) & 
+                (self.external_force_positions[:, 1] <= self.in_distribution_external_force_positions[1][1])
+            )
+
+            if torch.any(in_distribution_mask):
+                # Visualize in-distribution forces in yellow
+                in_distribution_forces = self.external_forces[in_distribution_mask]
+                in_distribution_force_scales = torch.norm(in_distribution_forces, dim=-1, keepdim=True)
+                in_distribution_force_pos_w = external_force_pos_w[in_distribution_mask]
+                in_distribution_force_quat_w = external_force_quat_w[in_distribution_mask]
+
+                # Scale and visualize the forces as yellow arrows
+                self.yellow_force_marker.visualize(translations=in_distribution_force_pos_w, orientations=in_distribution_force_quat_w)
+                self.yellow_force_marker.set_visibility(True)
+            else:
+                self.yellow_force_marker.set_visibility(False)
+
+            ood_mask = ~in_distribution_mask
+            if torch.any(ood_mask):
+                # Visualize out-of-distribution forces in green
+                ood_forces = self.external_forces[ood_mask]
+                ood_force_scales = torch.norm(ood_forces, dim=-1, keepdim=True)
+                ood_force_pos_w = external_force_pos_w[ood_mask]
+                ood_force_quat_w = external_force_quat_w[ood_mask]
+
+                # Scale and visualize the forces as green arrows
+                self.green_force_marker.visualize(translations=ood_force_pos_w, orientations=ood_force_quat_w, scales=ood_force_scales)
+                self.green_force_marker.set_visibility(True)
+            else:
+                self.green_force_marker.set_visibility(False)
+        else:
+            if hasattr(self, "yellow_force_marker"):
+                self.yellow_force_marker.set_visibility(False)
+            if hasattr(self, "green_force_marker"):
+                self.green_force_marker.set_visibility(False)
+
                     
     """
     Operations.
@@ -433,6 +533,8 @@ class Articulation(AssetBase):
         # convert root quaternion from wxyz to xyzw
         root_poses_xyzw = self._data.root_state_w[:, :7].clone()
         root_poses_xyzw[:, 3:] = math_utils.convert_quat(root_poses_xyzw[:, 3:], to="xyzw")
+        # Need to invalidate the buffer to trigger the update with the new root pose.
+        self._data._body_state_w.timestamp = -1.0
         # set into simulation
         self.root_physx_view.set_root_transforms(root_poses_xyzw, indices=physx_env_ids)
 
@@ -485,6 +587,8 @@ class Articulation(AssetBase):
         self._data.joint_vel[env_ids, joint_ids] = velocity
         self._data._previous_joint_vel[env_ids, joint_ids] = velocity
         self._data.joint_acc[env_ids, joint_ids] = 0.0
+        # Need to invalidate the buffer to trigger the update with the new root pose.
+        self._data._body_state_w.timestamp = -1.0
         # set into simulation
         self.root_physx_view.set_dof_positions(self._data.joint_pos, indices=physx_env_ids)
         self.root_physx_view.set_dof_velocities(self._data.joint_vel, indices=physx_env_ids)
@@ -494,6 +598,7 @@ class Articulation(AssetBase):
         stiffness: torch.Tensor | float,
         joint_ids: Sequence[int] | slice | None = None,
         env_ids: Sequence[int] | None = None,
+        allow_double_indexing: bool = True,
     ):
         """Write joint stiffness into the simulation.
 
@@ -511,7 +616,7 @@ class Articulation(AssetBase):
         if joint_ids is None:
             joint_ids = slice(None)
         # broadcast env_ids if needed to allow double indexing
-        if env_ids != slice(None) and joint_ids != slice(None):
+        if env_ids != slice(None) and joint_ids != slice(None) and allow_double_indexing:
             env_ids = env_ids[:, None]
         # set into internal buffers
         self._data.joint_stiffness[env_ids, joint_ids] = stiffness
@@ -523,6 +628,7 @@ class Articulation(AssetBase):
         damping: torch.Tensor | float,
         joint_ids: Sequence[int] | slice | None = None,
         env_ids: Sequence[int] | None = None,
+        allow_double_indexing: bool = True,
     ):
         """Write joint damping into the simulation.
 
@@ -542,7 +648,7 @@ class Articulation(AssetBase):
         if joint_ids is None:
             joint_ids = slice(None)
         # broadcast env_ids if needed to allow double indexing
-        if env_ids != slice(None) and joint_ids != slice(None):
+        if env_ids != slice(None) and joint_ids != slice(None) and allow_double_indexing:
             env_ids = env_ids[:, None]
         # set into internal buffers
         self._data.joint_damping[env_ids, joint_ids] = damping
@@ -1083,6 +1189,7 @@ class Articulation(AssetBase):
 
         # -- bodies
         self._data.default_mass = self.root_physx_view.get_masses().clone()
+        self._data.default_inertia = self.root_physx_view.get_inertias().clone()
 
         # -- default joint state
         self._data.default_joint_pos = torch.zeros(self.num_instances, self.num_joints, device=self.device)
@@ -1246,7 +1353,9 @@ class Articulation(AssetBase):
             actuator: ActuatorBase = actuator_cfg.class_type(
                 cfg=actuator_cfg,
                 joint_names=joint_names,
-                joint_ids=slice(None) if len(joint_names) == self.num_joints else joint_ids,
+                joint_ids=(
+                    slice(None) if len(joint_names) == self.num_joints else torch.tensor(joint_ids, device=self.device)
+                ),
                 num_envs=self.num_instances,
                 device=self.device,
                 stiffness=usd_stiffness[:, joint_ids],
@@ -1342,17 +1451,38 @@ class Articulation(AssetBase):
                 joint_indices=actuator.joint_indices,
             )
 
-            # get the blocked joint ids
-            blocked_joint_ids = None
-            if hasattr(self, "all_blocked_joints"):
-                blocked_joint_ids = self.all_blocked_joints
-            
-            # compute joint command from the actuator model
+            disabled_joint_ids = None
+            if hasattr(self, "all_disabled_joints"):
+                # Initialize the disabled joint ids for the actuator model to -1, which means the joint should not be disabled
+                disabled_joint_ids = torch.full((self.all_disabled_joints.shape[0],), -1, dtype=torch.long, device=self.all_disabled_joints.device)
+
+                #  Get the joint indices of the actuator
+                if actuator.joint_indices == slice(None):
+                    actuator_joint_indices = torch.arange(actuator.num_joints, device=self.all_disabled_joints.device)
+                else:
+                    actuator_joint_indices = actuator.joint_indices
+
+                # Check if the joints to disable are controlled by this actuator
+                is_disabled_joint_controlled = torch.isin(self.all_disabled_joints, actuator_joint_indices)
+
+                # For each joint in joints_to_disable, find its index in actuator joint indices
+                joints_to_disable = torch.where(actuator_joint_indices.unsqueeze(1) == self.all_disabled_joints[is_disabled_joint_controlled])[0]
+
+                # Set the relevant disabled joint ids
+                disabled_joint_ids[is_disabled_joint_controlled] = joints_to_disable
+
+                if isinstance(actuator, ImplicitActuator):
+                    envs_to_disable = torch.nonzero(is_disabled_joint_controlled).squeeze()
+                    # the gains and limits are set into the simulation since actuator model is implicit
+                    self.write_joint_stiffness_to_sim(0.0, joint_ids=joints_to_disable, env_ids=envs_to_disable, allow_double_indexing=False)
+                    self.write_joint_damping_to_sim(0.0, joint_ids=joints_to_disable, env_ids=envs_to_disable, allow_double_indexing=False)
+
+            # Compute joint command from the actuator model
             control_action = actuator.compute(
                 control_action,
                 joint_pos=self._data.joint_pos[:, actuator.joint_indices],
                 joint_vel=self._data.joint_vel[:, actuator.joint_indices],
-                blocked_joint_ids = blocked_joint_ids
+                disabled_joint_ids=disabled_joint_ids
             )
             # update targets (these are set into the simulation)
             if control_action.joint_positions is not None:

@@ -97,6 +97,17 @@ GREEN_ARROW_X_MARKER_CFG = VisualizationMarkersCfg(
 )
 """Configuration for the green arrow marker (along x-direction)."""
 
+YELLOW_ARROW_Z_MARKER_CFG = VisualizationMarkersCfg(
+    markers={
+        "arrow": sim_utils.UsdFileCfg(
+            usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/UIElements/arrow_x.usd",
+            scale=(0.1, 0.1, 1.0),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 1.0, 0.0)),
+        )
+    }
+)
+"""Configuration for the yellow arrow marker (along z-direction)."""
+
 WHITE_ARROW_X_MARKER_CFG = VisualizationMarkersCfg(
     markers={
         "arrow": sim_utils.UsdFileCfg(
@@ -148,7 +159,7 @@ POSITION_GOAL_MARKER_CFG = VisualizationMarkersCfg(
 
 YELLOW_JOINT_MARKER_CFG = VisualizationMarkersCfg(
     markers={
-        "blocked_joints": sim_utils.SphereCfg(
+        "disabled_joints": sim_utils.SphereCfg(
             radius=0.1,
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 1.0, 0.0)),
         ),
@@ -157,7 +168,7 @@ YELLOW_JOINT_MARKER_CFG = VisualizationMarkersCfg(
 
 PINK_JOINT_MARKER_CFG = VisualizationMarkersCfg(
     markers={
-        "blocked_joints": sim_utils.SphereCfg(
+        "disabled_joints": sim_utils.SphereCfg(
             radius=0.1,
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.0, 1.0)),  # RGB for pink
         ),
@@ -166,13 +177,13 @@ PINK_JOINT_MARKER_CFG = VisualizationMarkersCfg(
 
 GREEN_JOINT_MARKER_CFG = VisualizationMarkersCfg(
     markers={
-        "blocked_joints": sim_utils.SphereCfg(
+        "disabled_joints": sim_utils.SphereCfg(
             radius=0.1,
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 1.0, 0.0)),  # RGB for green
         ),
     }
 )
-"""Configuration for the blocked joint marker."""
+"""Configuration for the disabled joint marker."""
 
 
 CURR_POSITION_MARKER_CFG = VisualizationMarkersCfg(

@@ -219,6 +219,10 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
             self.extras["tracking_failure_count"] = tracking_failure_count
             self.extras["early_termination_count"] = early_termination_count
             self._reset_idx(reset_env_ids)
+            # if sensors are added to the scene, make sure we render to reflect changes in reset
+            if self.sim.has_rtx_sensors() and self.cfg.rerender_on_reset:
+                self.sim.render()
+
         # -- update command
         self.command_manager.compute(dt=self.step_dt)
         # -- step interval events

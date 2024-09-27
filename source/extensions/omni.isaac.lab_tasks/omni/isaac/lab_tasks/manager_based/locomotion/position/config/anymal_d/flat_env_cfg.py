@@ -70,7 +70,10 @@ class AnymalDPosTrackingFlatEnvCfg(PosTrackingEnvCfg):
         self.observations.policy.height_scan = None
         self.observations.critic.height_scan = None
 
-        if getattr(self.events, "block_joint", None) is not None:
+        # Set debug visualization for disabled joints
+        if getattr(self.events, "disable_joint", None) is not None:
+            self.scene.robot.debug_vis = True
+        if getattr(self.events, "add_payload_to_base", None) is not None:
             self.scene.robot.debug_vis = True
         
 

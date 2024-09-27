@@ -76,6 +76,12 @@ class RslRlPpoAlgorithmCfg:
     symmetry_cfg: dict | None = None
     """Symmetry augmentation configuration."""
 
+    lr_step_size: int = MISSING
+    """Step size of learning rate scheduler."""
+
+    lr_decay: float = MISSING
+    """Decay factor of learning rate scheduler."""
+
 
 @configclass
 class RslRlOnPolicyRunnerCfg:

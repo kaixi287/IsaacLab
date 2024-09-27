@@ -115,8 +115,6 @@ class ActuatorBase(ABC):
         # create commands buffers for allocation
         self.computed_effort = torch.zeros(self._num_envs, self.num_joints, device=self._device)
         self.applied_effort = torch.zeros_like(self.computed_effort)
-        
-        self.env_ids = torch.arange(self._num_envs, device=self._device)
 
     def __str__(self) -> str:
         """Returns: A string representation of the actuator group."""
