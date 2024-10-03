@@ -24,21 +24,21 @@ import omni.physics.tensors.impl.api as physx
 import omni.isaac.lab.sim as sim_utils
 import omni.isaac.lab.utils.math as math_utils
 from omni.isaac.lab.actuators import ImplicitActuator
-from omni.isaac.lab.assets import Articulation, RigidObject
+from omni.isaac.lab.assets import Articulation, DeformableObject, RigidObject
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.terrains import TerrainImporter
 
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedEnv
 
-def block_joint(
+def disable_joint(
     env: ManagerBasedEnv,
     env_ids: torch.Tensor | None,
     asset_cfg: SceneEntityCfg,
-    joint_to_block: int | list | None = None,
-    prob_no_block: float = 0.2,
+    joint_to_disable: int | list | None = None,
+    prob_no_disable: float = 0.2,
 ):
-    """Block a specified joint or a random joint of the asset by setting the output torque of the joint to zero.
+    """Disable a specified joint or a random joint of the asset by setting the output torque of the joint to zero.
 
     This function blocks a specified joint or a random joint if joint_to_block is -1.
     If joint_to_block is None, no joints will be blocked. If joint_to_block is a list,
@@ -49,17 +49,17 @@ def block_joint(
         env (BaseEnv): The environment object.
         env_ids (torch.Tensor | None): The environment IDs to apply the randomization to.
         asset_cfg (SceneEntityCfg): Configuration for the asset to modify.
-        joint_to_block (int | list | None): The index of the joint to block, a list of indices to sample from, 
+        joint_to_disable (int | list | None): The index of the joint to block, a list of indices to sample from, 
                                               or -1 to block a random joint, or None to block no joint.
-        prob_no_block (float): The probability of not blocking any joints. Should be between 0 and 1.
+        prob_no_disable (float): The probability of not disabling any joints. Should be between 0 and 1.
 
     .. tip::
         This function uses CPU tensors to assign the joint properties. It is recommended to use this function
         only during the initialization of the environment.
     """
 
-    if joint_to_block is None:
-        # No joints to block
+    if joint_to_disable is None:
+        # No joints to disable
         return
     
     # extract the used quantities (to enable type-hinting)
@@ -67,7 +67,7 @@ def block_joint(
 
     if not isinstance(asset, Articulation):
         raise ValueError(
-            f"Event term 'block_joint' not supported for asset: '{asset_cfg.name}'"
+            f"Event term 'disable_joint' not supported for asset: '{asset_cfg.name}'"
             f" with type: '{type(asset)}'."
         )
 
@@ -77,37 +77,40 @@ def block_joint(
 
     num_envs = len(env_ids)
 
-    # Determine whether to block joints based on probability
-    # block_decision = torch.rand(num_envs, device=asset.device) >= prob_no_block
+    # Determine whether to disable joints based on probability
+    disable_decision = torch.rand(num_envs, device=asset.device) >= prob_no_disable
 
-    # Initialize tensor for joints to block with -1 indicating no joint to block
-    joints_to_block = torch.full((num_envs,), -1, dtype=torch.int, device=asset.device)
+    # Initialize tensor for joints to disable with -1 indicating no joint to disable
+    joints_to_disable = torch.full((num_envs,), -1, dtype=torch.int, device=asset.device)
 
-    hardcoded_joints = torch.tensor([8, 8, 9, 9, 10, 10, 11, 11], dtype=torch.int, device=env.device)
+    # hardcoded_joints = torch.tensor([8, 8, 9, 9, 10, 10, 11, 11], dtype=torch.int, device=env.device)
 
-    if len(hardcoded_joints) != len(env_ids):
-        raise ValueError(f"The number of hardcoded joints ({len(hardcoded_joints)}) does not match the number of environments ({len(env_ids)}).")
+    # if len(hardcoded_joints) != len(env_ids):
+    #     raise ValueError(f"The number of hardcoded joints ({len(hardcoded_joints)}) does not match the number of environments ({len(env_ids)}).")
     
-    joints_to_block[:] = hardcoded_joints[:]
-
-    # # Determine joints to block
-    # if isinstance(joint_to_block, list):
-    #     # Sample from the list of joint indices
-    #     joint_to_block = torch.tensor(joint_to_block, dtype=torch.int, device="cpu")
-    #     indices = torch.randint(len(joint_to_block), (num_envs,), dtype=torch.int, device="cpu")
-    #     selected_joints = joint_to_block[indices].to(asset.device)
-    #     joints_to_block[block_decision] = selected_joints[block_decision]
-    # elif joint_to_block == -1:
-    #     # Generate random joint
-    #     random_joints = torch.randint(asset.num_joints, (num_envs,), dtype=torch.int, device=asset.device)
-    #     joints_to_block[block_decision] = random_joints[block_decision]
-    # else:
-    #     selected_joint = torch.tensor([joint_to_block] * num_envs, dtype=torch.int, device=asset.device)
-    #     joints_to_block[block_decision] = selected_joint[block_decision]
+    # joints_to_disable[:] = hardcoded_joints[:]
 
     # Update markers to show which joint is blocked
     asset.update_blocked_joints(env_ids, joints_to_block)
+    # Determine joints to disable
+    if isinstance(joint_to_disable, list):
+        # Sample from the list of joint indices
+        joint_to_disable = torch.tensor(joint_to_disable, dtype=torch.int, device="cpu")
+        indices = torch.randint(len(joint_to_disable), (num_envs,), dtype=torch.int, device="cpu")
+        selected_joints = joint_to_disable[indices].to(asset.device)
+        joints_to_disable[disable_decision] = selected_joints[disable_decision]
+    elif joint_to_disable == -1:
+        # Generate random joint
+        joint_ids = torch.tensor(asset_cfg.joint_ids, dtype=torch.int, device="cpu")
+        indices = torch.randint(len(joint_ids), (num_envs,), dtype=torch.int, device="cpu")
+        random_joints = joint_ids[indices].to(asset.device)
+        joints_to_disable[disable_decision] = random_joints[disable_decision]
+    else:
+        selected_joint = torch.tensor([joint_to_disable] * num_envs, dtype=torch.int, device=asset.device)
+        joints_to_disable[disable_decision] = selected_joint[disable_decision]
 
+    # Update markers to show which joint is disabled
+    asset.update_disabled_joints(env_ids, joints_to_disable)
 
 
 def randomize_rigid_body_material(
@@ -210,11 +213,17 @@ def randomize_rigid_body_mass(
     mass_distribution_params: tuple[float, float],
     operation: Literal["add", "scale", "abs"],
     distribution: Literal["uniform", "log_uniform", "gaussian"] = "uniform",
+    recompute_inertia: bool = True,
 ):
     """Randomize the mass of the bodies by adding, scaling, or setting random values.
 
     This function allows randomizing the mass of the bodies of the asset. The function samples random values from the
     given distribution parameters and adds, scales, or sets the values into the physics simulation based on the operation.
+
+    If the ``recompute_inertia`` flag is set to ``True``, the function recomputes the inertia tensor of the bodies
+    after setting the mass. This is useful when the mass is changed significantly, as the inertia tensor depends
+    on the mass. It assumes the body is a uniform density object. If the body is not a uniform density object,
+    the inertia tensor may not be accurate.
 
     .. tip::
         This function uses CPU tensors to assign the body masses. It is recommended to use this function
@@ -237,7 +246,10 @@ def randomize_rigid_body_mass(
 
     # get the current masses of the bodies (num_assets, num_bodies)
     masses = asset.root_physx_view.get_masses()
+
     # apply randomization on default values
+    # this is to make sure when calling the function multiple times, the randomization is applied on the
+    # default values and not the previously randomized values
     masses[env_ids[:, None], body_ids] = asset.data.default_mass[env_ids[:, None], body_ids].clone()
 
     # sample from the given range
@@ -249,6 +261,24 @@ def randomize_rigid_body_mass(
 
     # set the mass into the physics simulation
     asset.root_physx_view.set_masses(masses, env_ids)
+
+    # recompute inertia tensors if needed
+    if recompute_inertia:
+        # compute the ratios of the new masses to the initial masses
+        ratios = masses[env_ids[:, None], body_ids] / asset.data.default_mass[env_ids[:, None], body_ids]
+        # scale the inertia tensors by the the ratios
+        # since mass randomization is done on default values, we can use the default inertia tensors
+        inertias = asset.root_physx_view.get_inertias()
+        if isinstance(asset, Articulation):
+            # inertia has shape: (num_envs, num_bodies, 9) for articulation
+            inertias[env_ids[:, None], body_ids] = (
+                asset.data.default_inertia[env_ids[:, None], body_ids] * ratios[..., None]
+            )
+        else:
+            # inertia has shape: (num_envs, 9) for rigid object
+            inertias[env_ids] = asset.data.default_inertia[env_ids] * ratios
+        # set the inertia tensors into the physics simulation
+        asset.root_physx_view.set_inertias(inertias, env_ids)
 
 
 def randomize_physics_scene_gravity(
@@ -615,6 +645,70 @@ def apply_external_force_torque(
     # note: these are only applied when you call: `asset.write_data_to_sim()`
     asset.set_external_force_and_torque(forces, torques, env_ids=env_ids, body_ids=asset_cfg.body_ids)
 
+def add_payload_to_base(
+    env: ManagerBasedEnv,
+    env_ids: torch.Tensor,
+    mass_range: tuple[float, float],
+    x_position_range: tuple[float, float],
+    y_position_range: tuple[float, float],
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot", body_names="base"),
+):
+    """Simulate a payload being carried by the robot by applying forces and computing corresponding torques.
+
+    This function samples random masses (representing payload weight) and x, y positions (representing payload placement)
+    sampled from the given ranges. It fixes the z position to the base surface (z=0). Forces are computed based on the mass
+    and gravity, while torques are computed as the cross-product of the position and the force.
+
+    Args:
+        env: The environment object.
+        env_ids: The environment IDs to apply the randomization to.
+        mass_range: Range of possible masses for the payload.
+        x_position_range: Range of x-position for the payload relative to the base center.
+        y_position_range: Range of y-position for the payload relative to the base center.
+        asset_cfg: Configuration for the asset (robot).
+    """
+    # extract the used quantities (to enable type-hinting)
+    asset: Articulation = env.scene[asset_cfg.name]
+
+    if not isinstance(asset, Articulation):
+        raise ValueError(
+            f"Event term 'disable_joint' not supported for asset: '{asset_cfg.name}'"
+            f" with type: '{type(asset)}'."
+        )
+    
+    # resolve environment ids
+    if env_ids is None:
+        env_ids = torch.arange(env.scene.num_envs, device=asset.device)
+    
+    # resolve number of bodies
+    num_bodies = len(asset_cfg.body_ids) if isinstance(asset_cfg.body_ids, list) else asset.num_bodies
+
+    # sample random masses (representing the payload weight)
+    masses = math_utils.sample_uniform(*mass_range, (len(env_ids), num_bodies, 1), asset.device)
+
+    # Get the gravity from the physics scene (assuming it's constant)
+    gravity = torch.tensor(env.sim.cfg.gravity, device=asset.device).expand(len(env_ids), num_bodies, -1)
+
+    # Compute forces by multiplying the mass with gravity, apply only in z-direction
+    forces = masses * gravity  # (num_envs, num_bodies, 3)
+
+    # sample random x, y positions for the payload relative to the base
+    x_positions = math_utils.sample_uniform(*x_position_range, (len(env_ids), num_bodies, 1), asset.device)
+    y_positions = math_utils.sample_uniform(*y_position_range, (len(env_ids), num_bodies, 1), asset.device)
+    
+    # Simulate payload applied on the base surface, using a base height of 0.265 as specified in the urdf under https://github.com/ANYbotics/anymal_d_simple_description
+    z_positions = torch.full((len(env_ids), num_bodies, 1), 0.265 / 2, device=asset.device)
+    
+    # Concatenate x, y, and z to form the position vectors
+    positions = torch.cat([x_positions, y_positions, z_positions], dim=-1)
+
+    # compute torques as the cross-product of position and force
+    torques = torch.cross(positions, forces, dim=-1)
+
+    # set the forces and torques into the buffers
+    asset.set_external_force_and_torque(forces, torques, env_ids=env_ids, body_ids=asset_cfg.body_ids)
+    asset.update_external_force(env_ids, forces, positions)
+
 
 def push_by_setting_velocity(
     env: ManagerBasedEnv,
@@ -875,6 +969,48 @@ def reset_joints_by_offset(
     asset.write_joint_state_to_sim(joint_pos, joint_vel, env_ids=env_ids)
 
 
+def reset_nodal_state_uniform(
+    env: ManagerBasedEnv,
+    env_ids: torch.Tensor,
+    position_range: dict[str, tuple[float, float]],
+    velocity_range: dict[str, tuple[float, float]],
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+):
+    """Reset the asset nodal state to a random position and velocity uniformly within the given ranges.
+
+    This function randomizes the nodal position and velocity of the asset.
+
+    * It samples the root position from the given ranges and adds them to the default nodal position, before setting
+      them into the physics simulation.
+    * It samples the root velocity from the given ranges and sets them into the physics simulation.
+
+    The function takes a dictionary of position and velocity ranges for each axis. The keys of the
+    dictionary are ``x``, ``y``, ``z``. The values are tuples of the form ``(min, max)``.
+    If the dictionary does not contain a key, the position or velocity is set to zero for that axis.
+    """
+    # extract the used quantities (to enable type-hinting)
+    asset: DeformableObject = env.scene[asset_cfg.name]
+    # get default root state
+    nodal_state = asset.data.default_nodal_state_w[env_ids].clone()
+
+    # position
+    range_list = [position_range.get(key, (0.0, 0.0)) for key in ["x", "y", "z"]]
+    ranges = torch.tensor(range_list, device=asset.device)
+    rand_samples = math_utils.sample_uniform(ranges[:, 0], ranges[:, 1], (len(env_ids), 1, 3), device=asset.device)
+
+    nodal_state[..., :3] += rand_samples
+
+    # velocities
+    range_list = [velocity_range.get(key, (0.0, 0.0)) for key in ["x", "y", "z"]]
+    ranges = torch.tensor(range_list, device=asset.device)
+    rand_samples = math_utils.sample_uniform(ranges[:, 0], ranges[:, 1], (len(env_ids), 1, 3), device=asset.device)
+
+    nodal_state[..., 3:] += rand_samples
+
+    # set into the physics simulation
+    asset.write_nodal_state_to_sim(nodal_state, env_ids=env_ids)
+
+
 def reset_scene_to_default(env: ManagerBasedEnv, env_ids: torch.Tensor):
     """Reset the scene to the default state specified in the scene configuration."""
     # rigid bodies
@@ -896,6 +1032,11 @@ def reset_scene_to_default(env: ManagerBasedEnv, env_ids: torch.Tensor):
         default_joint_vel = articulation_asset.data.default_joint_vel[env_ids].clone()
         # set into the physics simulation
         articulation_asset.write_joint_state_to_sim(default_joint_pos, default_joint_vel, env_ids=env_ids)
+    # deformable objects
+    for deformable_object in env.scene.deformable_objects.values():
+        # obtain default and set into the physics simulation
+        nodal_state = deformable_object.data.default_nodal_state_w[env_ids].clone()
+        deformable_object.write_nodal_state_to_sim(nodal_state, env_ids=env_ids)
 
 
 """
