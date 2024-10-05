@@ -1,40 +1,24 @@
 #!/bin/bash
 
 load_mlp_runs=(
-    "2024-09-01_15-11-17_mlp_rand_mid"
-    "2024-09-04_20-12-15_mlp_rand_mid"
-    "2024-09-04_20-24-12_mlp_rand_mid"
-    "2024-09-04_20-33-02_mlp_rand_mid"
-    "2024-09-04_20-43-59_mlp_rand_mid"
-    "2024-09-02_00-16-27_mlp_aug_mid"
-    "2024-09-02_00-57-46_mlp_aug_mid"
-    "2024-09-02_01-41-21_mlp_aug_mid"
-    "2024-09-02_02-22-13_mlp_aug_mid"
-    "2024-09-02_15-19-58_mlp_aug_mid"
-    "2024-09-05_22-36-11_mlp_lf_mid"
-    "2024-09-05_22-42-50_mlp_lf_mid"
-    "2024-09-05_22-49-51_mlp_lf_mid"
-    "2024-09-05_22-57-09_mlp_lf_mid"
-    "2024-09-05_23-04-09_mlp_lf_mid"
+    "2024-10-03_20-58-54_mlp_rand_payload"
+    "2024-10-03_21-27-24_mlp_aug_payload"
+    "2024-10-03_21-32-22_mlp_aug_payload"
+    "2024-10-03_21-37-52_mlp_aug_payload"
+    "2024-10-03_22-30-12_mlp_lf_payload"
+    "2024-10-03_22-35-42_mlp_lf_payload"
+    "2024-10-03_22-41-23_mlp_lf_payload"
 )
 
 # Array of load_run arguments
 load_rnn_runs=(
-    "2024-09-01_15-05-28_rnn_rand_mid"
-    "2024-09-04_21-00-09_rnn_rand_mid"
-    "2024-09-04_21-04-44_rnn_rand_mid"
-    "2024-09-04_21-16-45_rnn_rand_mid"
-    "2024-09-04_21-26-30_rnn_rand_mid"
-    "2024-09-05_00-00-51_rnn_lf_mid"
-    "2024-09-05_00-09-24_rnn_lf_mid"
-    "2024-09-05_00-18-26_rnn_lf_mid"
-    "2024-09-05_00-28-02_rnn_lf_mid"
-    "2024-09-04_23-51-50_rnn_lf_mid"
-    "2024-09-06_11-02-12_rnn_aug_mid"
-    "2024-09-06_11-07-09_rnn_aug_mid"
-    "2024-09-06_11-12-52_rnn_aug_mid"
-    "2024-09-06_11-20-50_rnn_aug_mid"
-    "2024-09-06_11-34-18_rnn_aug_mid"
+    "2024-10-03_21-04-13_rnn_rand_payload"
+    "2024-10-03_21-43-25_rnn_aug_payload"
+    "2024-10-03_21-48-44_rnn_aug_payload"
+    "2024-10-03_21-54-05_rnn_aug_payload"
+    "2024-10-03_22-46-32_rnn_lf_payload"
+    "2024-10-03_22-52-15_rnn_lf_payload"
+    "2024-10-03_22-57-18_rnn_lf_payload"
 )
 
 
@@ -52,10 +36,10 @@ for run in "${load_mlp_runs[@]}"; do
     fi
 
     # Execute the command with the current load_run argument and appropriate log_run_name
-    ./docker/cluster/cluster_interface.sh job base --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 1000 --seed 10 --logger wandb --log_project_name position_tracking_eval3_10 --log_run_name "$log_run_name" --actor_critic_class_name ActorCritic
-    
+    ./docker/cluster/cluster_interface.sh job base --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 1000 --seed 10 --logger wandb --log_project_name pos_tracking_with_payload_eval_ood --log_run_name "$log_run_name" --actor_critic_class_name ActorCritic
+
     # Wait for 10 minutes (600 seconds) before running the next command
-    sleep 350
+    sleep 200
 done
 
 # Loop through each load_run argument
@@ -72,8 +56,8 @@ for run in "${load_rnn_runs[@]}"; do
     fi
 
     # Execute the command with the current load_run argument and appropriate log_run_name
-    ./docker/cluster/cluster_interface.sh job base --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 1000 --seed 10 --logger wandb --log_project_name position_tracking_eval3_10 --log_run_name "$log_run_name" --actor_critic_class_name ActorCriticRecurrent
-    
+    ./docker/cluster/cluster_interface.sh job base --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 1000 --seed 10 --logger wandb --log_project_name pos_tracking_with_payload_eval_ood --log_run_name "$log_run_name" --actor_critic_class_name ActorCriticRecurrent
+
     # Wait for 10 minutes (600 seconds) before running the next command
-    sleep 350
+    sleep 200
 done

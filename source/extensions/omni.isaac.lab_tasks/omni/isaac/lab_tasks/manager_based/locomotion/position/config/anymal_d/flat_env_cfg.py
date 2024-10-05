@@ -3,14 +3,17 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-from omni.isaac.lab.utils import configclass
-
+from omni.isaac.lab.managers import RewardTermCfg as RewTerm
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
-from omni.isaac.lab.managers import RewardTermCfg as RewTerm
-from omni.isaac.lab_tasks.manager_based.locomotion.position.position_env_cfg import PosTrackingEnvCfg, TerminationsCfg, RewardsCfg
+from omni.isaac.lab.utils import configclass
 
 import omni.isaac.lab_tasks.manager_based.locomotion.position.mdp as mdp
+from omni.isaac.lab_tasks.manager_based.locomotion.position.position_env_cfg import (
+    PosTrackingEnvCfg,
+    RewardsCfg,
+    TerminationsCfg,
+)
 
 ##
 # Pre-defined configs
@@ -22,10 +25,11 @@ from omni.isaac.lab_assets.anymal import ANYMAL_D_CFG  # isort: skip
 # MDP settings
 ##
 
+
 @configclass
 class AnymalDTerminationsCfg(TerminationsCfg):
     """Termination terms for ANYMAL_D."""
-    
+
     illegal_force_feet = DoneTerm(
         func=mdp.illegal_force,
         params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*FOOT"), "max_force": 1500},
@@ -35,14 +39,23 @@ class AnymalDTerminationsCfg(TerminationsCfg):
         params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*"), "max_force": 5000},
     )
 
+
 @configclass
 class AnymalDRewards(RewardsCfg):
     # TODO: still needed?
     feet_acc = RewTerm(
-        func=mdp.feet_acc,
-        weight=-0.002,
-        params={"asset_cfg": SceneEntityCfg("robot", body_names=[".*_FOOT"])}
+        func=mdp.feet_acc, weight=-0.002, params={"asset_cfg": SceneEntityCfg("robot", body_names=[".*_FOOT"])}
     )
+    feet_balance = RewTerm(
+        func=mdp.feet_balance,
+        weight=-1000,
+        params={
+            "duration": 1.0,
+            "command_name": "pose_command",
+            "asset_cfg": SceneEntityCfg("robot", body_names=[".*_FOOT"]),
+        },
+    )
+
 
 ##
 # Environment configuration
@@ -52,7 +65,7 @@ class AnymalDRewards(RewardsCfg):
 @configclass
 class AnymalDPosTrackingFlatEnvCfg(PosTrackingEnvCfg):
     """Configuration for the locomotion velocity-tracking environment."""
-    
+
     terminations: TerminationsCfg = AnymalDTerminationsCfg()
     rewards: RewardsCfg = AnymalDRewards()
 
@@ -75,7 +88,7 @@ class AnymalDPosTrackingFlatEnvCfg(PosTrackingEnvCfg):
             self.scene.robot.debug_vis = True
         if getattr(self.events, "add_payload_to_base", None) is not None:
             self.scene.robot.debug_vis = True
-        
+
 
 class AnymalDPosTrackingFlatEnvCfg_PLAY(AnymalDPosTrackingFlatEnvCfg):
     def __post_init__(self) -> None:
@@ -88,7 +101,7 @@ class AnymalDPosTrackingFlatEnvCfg_PLAY(AnymalDPosTrackingFlatEnvCfg):
         # disable randomization for play
         self.observations.policy.enable_corruption = False
         if hasattr(self.events, "disable_joint"):
-            self.events.disable_joint.params["prob_no_block"] = 0.0
+            self.events.disable_joint.params["prob_no_disable"] = 0.0
         # if hasattr(self.events, "add_payload_to_base"):
         #     self.events.add_payload_to_base.params["x_position_range"] = (-0.4, 0.4)
         #     self.events.add_payload_to_base.params["y_position_range"] = (-0.08, 0.08)
