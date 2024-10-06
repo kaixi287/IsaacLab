@@ -31,6 +31,7 @@ from omni.isaac.lab.terrains import TerrainImporter
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedEnv
 
+
 def disable_joint(
     env: ManagerBasedEnv,
     env_ids: torch.Tensor | None,
@@ -49,7 +50,7 @@ def disable_joint(
         env (BaseEnv): The environment object.
         env_ids (torch.Tensor | None): The environment IDs to apply the randomization to.
         asset_cfg (SceneEntityCfg): Configuration for the asset to modify.
-        joint_to_disable (int | list | None): The index of the joint to block, a list of indices to sample from, 
+        joint_to_disable (int | list | None): The index of the joint to block, a list of indices to sample from,
                                               or -1 to block a random joint, or None to block no joint.
         prob_no_disable (float): The probability of not disabling any joints. Should be between 0 and 1.
 
@@ -61,14 +62,13 @@ def disable_joint(
     if joint_to_disable is None:
         # No joints to disable
         return
-    
+
     # extract the used quantities (to enable type-hinting)
     asset: Articulation = env.scene[asset_cfg.name]
 
     if not isinstance(asset, Articulation):
         raise ValueError(
-            f"Event term 'disable_joint' not supported for asset: '{asset_cfg.name}'"
-            f" with type: '{type(asset)}'."
+            f"Event term 'disable_joint' not supported for asset: '{asset_cfg.name}' with type: '{type(asset)}'."
         )
 
     # resolve environment ids
@@ -636,6 +636,7 @@ def apply_external_force_torque(
     # note: these are only applied when you call: `asset.write_data_to_sim()`
     asset.set_external_force_and_torque(forces, torques, env_ids=env_ids, body_ids=asset_cfg.body_ids)
 
+
 def add_payload_to_base(
     env: ManagerBasedEnv,
     env_ids: torch.Tensor,
@@ -663,14 +664,13 @@ def add_payload_to_base(
 
     if not isinstance(asset, Articulation):
         raise ValueError(
-            f"Event term 'disable_joint' not supported for asset: '{asset_cfg.name}'"
-            f" with type: '{type(asset)}'."
+            f"Event term 'disable_joint' not supported for asset: '{asset_cfg.name}' with type: '{type(asset)}'."
         )
-    
+
     # resolve environment ids
     if env_ids is None:
         env_ids = torch.arange(env.scene.num_envs, device=asset.device)
-    
+
     # resolve number of bodies
     num_bodies = len(asset_cfg.body_ids) if isinstance(asset_cfg.body_ids, list) else asset.num_bodies
 
@@ -688,25 +688,25 @@ def add_payload_to_base(
     y_positions = math_utils.sample_uniform(*y_position_range, (len(env_ids), num_bodies, 1), asset.device)
 
     # OOD sampling
-    while True:
-        # Create a mask for positive x and positive y values
-        positive_x_mask = x_positions > 0
-        positive_y_mask = y_positions > 0
+    # while True:
+    #     # Create a mask for positive x and positive y values
+    #     positive_x_mask = x_positions > 0
+    #     positive_y_mask = y_positions > 0
 
-        # Find conflicting elements where both x and y are positive
-        conflict_mask = positive_x_mask & positive_y_mask
+    #     # Find conflicting elements where both x and y are positive
+    #     conflict_mask = positive_x_mask & positive_y_mask
 
-        # If no conflict exists, exit the loop
-        if not torch.any(conflict_mask):
-            break
+    #     # If no conflict exists, exit the loop
+    #     if not torch.any(conflict_mask):
+    #         break
 
-        # Resample x and y where the conflict mask is true
-        x_positions[conflict_mask] = math_utils.sample_uniform(*x_position_range, x_positions[conflict_mask].shape, asset.device)
-        y_positions[conflict_mask] = math_utils.sample_uniform(*y_position_range, y_positions[conflict_mask].shape, asset.device)
-    
+    #     # Resample x and y where the conflict mask is true
+    #     x_positions[conflict_mask] = math_utils.sample_uniform(*x_position_range, x_positions[conflict_mask].shape, asset.device)
+    #     y_positions[conflict_mask] = math_utils.sample_uniform(*y_position_range, y_positions[conflict_mask].shape, asset.device)
+
     # Simulate payload applied on the base surface, using a base height of 0.265 as specified in the urdf under https://github.com/ANYbotics/anymal_d_simple_description
     z_positions = torch.full((len(env_ids), num_bodies, 1), 0.265 / 2, device=asset.device)
-    
+
     # Concatenate x, y, and z to form the position vectors
     positions = torch.cat([x_positions, y_positions, z_positions], dim=-1)
 

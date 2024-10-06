@@ -1,24 +1,28 @@
 #!/bin/bash
 
 load_mlp_runs=(
-    "2024-10-03_20-58-54_mlp_rand_payload"
-    "2024-10-03_21-27-24_mlp_aug_payload"
-    "2024-10-03_21-32-22_mlp_aug_payload"
-    "2024-10-03_21-37-52_mlp_aug_payload"
-    "2024-10-03_22-30-12_mlp_lf_payload"
-    "2024-10-03_22-35-42_mlp_lf_payload"
-    "2024-10-03_22-41-23_mlp_lf_payload"
+    "2024-10-05_23-23-33_mlp_aug_payload"
+    "2024-10-05_23-25-36_mlp_aug_payload"
+    "2024-10-05_23-30-19_mlp_aug_payload"
+    "2024-10-05_23-37-29_mlp_lf_payload"
+    "2024-10-05_23-39-26_mlp_lf_payload"
+    "2024-10-05_23-41-00_mlp_lf_payload"
+    "2024-10-06_04-51-16_mlp_rand_payload"
+    "2024-10-06_04-53-03_mlp_rand_payload"
+    "2024-10-06_04-55-07_mlp_rand_payload"
 )
 
 # Array of load_run arguments
 load_rnn_runs=(
-    "2024-10-03_21-04-13_rnn_rand_payload"
-    "2024-10-03_21-43-25_rnn_aug_payload"
-    "2024-10-03_21-48-44_rnn_aug_payload"
-    "2024-10-03_21-54-05_rnn_aug_payload"
-    "2024-10-03_22-46-32_rnn_lf_payload"
-    "2024-10-03_22-52-15_rnn_lf_payload"
-    "2024-10-03_22-57-18_rnn_lf_payload"
+    "2024-10-05_23-30-49_rnn_aug_payload"
+    "2024-10-06_01-16-19_rnn_aug_payload"
+    "2024-10-06_01-35-01_rnn_aug_payload"
+    "2024-10-05_23-43-21_rnn_lf_payload"
+    "2024-10-05_23-45-54_rnn_lf_payload"
+    "2024-10-05_23-48-03_rnn_lf_payload"
+    "2024-10-06_04-57-15_rnn_rand_payload"
+    "2024-10-06_04-59-19_rnn_rand_payload"
+    "2024-10-06_06-51-34_rnn_rand_payload"
 )
 
 
@@ -36,7 +40,7 @@ for run in "${load_mlp_runs[@]}"; do
     fi
 
     # Execute the command with the current load_run argument and appropriate log_run_name
-    ./docker/cluster/cluster_interface.sh job base --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 1000 --seed 10 --logger wandb --log_project_name pos_tracking_with_payload_eval_ood --log_run_name "$log_run_name" --actor_critic_class_name ActorCritic
+    ./docker/cluster/cluster_interface.sh job base --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 1000 --seed 10 --logger wandb --log_project_name pos_tracking_with_payload_eval_id --log_run_name "$log_run_name" --actor_critic_class_name ActorCritic
 
     # Wait for 10 minutes (600 seconds) before running the next command
     sleep 200
@@ -56,7 +60,7 @@ for run in "${load_rnn_runs[@]}"; do
     fi
 
     # Execute the command with the current load_run argument and appropriate log_run_name
-    ./docker/cluster/cluster_interface.sh job base --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 1000 --seed 10 --logger wandb --log_project_name pos_tracking_with_payload_eval_ood --log_run_name "$log_run_name" --actor_critic_class_name ActorCriticRecurrent
+    ./docker/cluster/cluster_interface.sh job base --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 1000 --seed 10 --logger wandb --log_project_name pos_tracking_with_payload_eval_id --log_run_name "$log_run_name" --actor_critic_class_name ActorCriticRecurrent
 
     # Wait for 10 minutes (600 seconds) before running the next command
     sleep 200

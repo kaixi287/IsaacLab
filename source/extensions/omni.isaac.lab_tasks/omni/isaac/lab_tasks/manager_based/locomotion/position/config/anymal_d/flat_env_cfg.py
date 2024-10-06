@@ -46,15 +46,15 @@ class AnymalDRewards(RewardsCfg):
     feet_acc = RewTerm(
         func=mdp.feet_acc, weight=-0.002, params={"asset_cfg": SceneEntityCfg("robot", body_names=[".*_FOOT"])}
     )
-    feet_balance = RewTerm(
-        func=mdp.feet_balance,
-        weight=-1000,
-        params={
-            "duration": 1.0,
-            "command_name": "pose_command",
-            "asset_cfg": SceneEntityCfg("robot", body_names=[".*_FOOT"]),
-        },
-    )
+    # feet_balance = RewTerm(
+    #     func=mdp.feet_balance,
+    #     weight=-1000,
+    #     params={
+    #         "duration": 1.0,
+    #         "command_name": "pose_command",
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=[".*_FOOT"]),
+    #     },
+    # )
 
 
 ##
