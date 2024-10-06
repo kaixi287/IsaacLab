@@ -90,8 +90,6 @@ def disable_joint(
     
     # joints_to_disable[:] = hardcoded_joints[:]
 
-    # Update markers to show which joint is blocked
-    asset.update_blocked_joints(env_ids, joints_to_block)
     # Determine joints to disable
     if isinstance(joint_to_disable, list):
         # Sample from the list of joint indices

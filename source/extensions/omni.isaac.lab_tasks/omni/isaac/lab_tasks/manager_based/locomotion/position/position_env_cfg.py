@@ -4,10 +4,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 import math
-from dataclasses import MISSING
+from dataclasses import MISSING  # noqa: F401
 
 from omni.isaac.lab.envs import ManagerBasedRLEnvCfg
-from omni.isaac.lab.managers import CurriculumTermCfg as CurrTerm
+from omni.isaac.lab.managers import CurriculumTermCfg as CurrTerm  # noqa: F401
 from omni.isaac.lab.managers import EventTermCfg as EventTerm
 from omni.isaac.lab.managers import ObservationGroupCfg as ObsGroup
 from omni.isaac.lab.managers import ObservationTermCfg as ObsTerm
@@ -36,8 +36,10 @@ class CommandsCfg:
         debug_vis=True,
         polar_sampling=True,
         ranges=mdp.UniformPose2dCommandCfg.Ranges(pos_x=(-3.0, 3.0), pos_y=(-3.0, 3.0), heading=(-math.pi, math.pi)),
-        polar_ranges=mdp.UniformPose2dCommandCfg.PolarRanges(radius=(1.0, 5.0), theta=(-math.pi, math.pi), heading=(-math.pi, math.pi)),
-        include_heading=False
+        polar_ranges=mdp.UniformPose2dCommandCfg.PolarRanges(
+            radius=(1.0, 5.0), theta=(-math.pi, math.pi), heading=(-math.pi, math.pi)
+        ),
+        include_heading=False,
     )
 
 
@@ -65,7 +67,9 @@ class ObservationsCfg:
         )
         pos_commands = ObsTerm(func=mdp.pos_commands, params={"command_name": "pose_command"})
         # heading_commands = ObsTerm(func=mdp.heading_commands_sin, params={"command_name": "pose_command"})
-        time_to_target = ObsTerm(func=mdp.time_to_target, params={"command_name": "pose_command"}, noise=Unoise(n_min=-0.1, n_max=0.1))
+        time_to_target = ObsTerm(
+            func=mdp.time_to_target, params={"command_name": "pose_command"}, noise=Unoise(n_min=-0.1, n_max=0.1)
+        )
         joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
         actions = ObsTerm(func=mdp.last_action)
@@ -75,7 +79,7 @@ class ObservationsCfg:
             noise=Unoise(n_min=-0.1, n_max=0.1),
             clip=(-1.0, 1.0),
         )
-        
+
         def __post_init__(self, enable_corruption=True, concatenate_terms=True):
             self.enable_corruption = enable_corruption
             self.concatenate_terms = concatenate_terms
@@ -117,7 +121,7 @@ class EventCfg:
         func=mdp.reset_root_state_uniform,
         mode="reset",
         params={
-            "pose_range": {"x": (0.0, 0.0), "y": (0.0, 0.0), "yaw": (3.14/2, 3.14/2)},
+            "pose_range": {"x": (0.0, 0.0), "y": (0.0, 0.0), "yaw": (3.14 / 2, 3.14 / 2)},
             "velocity_range": {
                 "x": (-0.5, 0.5),
                 "y": (-0.5, 0.5),
@@ -143,9 +147,9 @@ class EventCfg:
         mode="reset",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "mass_range": (0.0, 5.0),
-            "x_position_range": (0.0, 0.4),
-            "y_position_range": (0.0, 0.08),
+            "mass_range": (20.0, 30.0),
+            "x_position_range": (-0.4, 0.4),
+            "y_position_range": (-0.08, 0.08),
         },
     )
 
@@ -158,6 +162,7 @@ class EventCfg:
     #         "prob_no_disable": 0.2,
     #     },
     # )
+
 
 @configclass
 class RewardsCfg:
@@ -190,18 +195,20 @@ class RewardsCfg:
     # dof_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=0.0)
 
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)
-    
+
     dont_wait = RewTerm(func=mdp.dont_wait, weight=-1.0, params={"min_vel": 0.2, "command_name": "pose_command"})
-    move_in_direction = RewTerm(func=mdp.move_in_direction, weight=1.0, params={"command_name": "pose_command"}) 
-    
+    move_in_direction = RewTerm(func=mdp.move_in_direction, weight=1.0, params={"command_name": "pose_command"})
+
     # parkour tuning rewards
     dof_vel_l2 = RewTerm(func=mdp.joint_vel_l2, weight=-0.001)
     base_acc = RewTerm(
-        func=mdp.base_acc, 
-        weight=-0.001,
-        params={"asset_cfg": SceneEntityCfg("robot", body_names=["base"])}
+        func=mdp.base_acc, weight=-0.001, params={"asset_cfg": SceneEntityCfg("robot", body_names=["base"])}
     )
-    collision = RewTerm(func=mdp.collision, weight=-0.5, params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*(THIGH|SHANK)")})
+    collision = RewTerm(
+        func=mdp.collision,
+        weight=-0.5,
+        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*(THIGH|SHANK)")},
+    )
     applied_torque_limits = RewTerm(func=mdp.applied_torque_limits, weight=-0.2)
     dof_vel_limits = RewTerm(func=mdp.joint_vel_limits, weight=-1.0, params={"soft_ratio": 0.9})
     contact_forces = RewTerm(
@@ -209,12 +216,15 @@ class RewardsCfg:
         weight=-0.00001,
         params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*"), "threshold": 700.0},
     )
-    stand_still = RewTerm(func=mdp.stand_still_pose, weight=-0.05, params={"duration": 1.0, "command_name": "pose_command"})
+    stand_still = RewTerm(
+        func=mdp.stand_still_pose, weight=-0.05, params={"duration": 1.0, "command_name": "pose_command"}
+    )
     # time_efficiency_reward = RewTerm(
     #     func=mdp.time_efficiency_reward,
     #     weight=2.0,
     #     params={"command_name": "pose_command"}
     # )
+
 
 @configclass
 class TerminationsCfg:
@@ -230,6 +240,7 @@ class TerminationsCfg:
 @configclass
 class CurriculumCfg:
     """Curriculum terms for the MDP."""
+
     pass
     # remove_move_in_direction_reward = CurrTerm(
     #     func=mdp.modify_reward_weight_on_threshold, params={"term_name": "move_in_direction", "weight": 0.0, "ref_term_name": "tracking_pos", "threshold": 0.5}
@@ -271,7 +282,7 @@ class PosTrackingEnvCfg(ManagerBasedRLEnvCfg):
         # we tick all the sensors based on the smallest update period (physics update period)
         if self.scene.height_scanner is not None:
             self.scene.height_scanner.update_period = self.decimation * self.sim.dt
-            
+
         if self.scene.contact_forces is not None:
             self.scene.contact_forces.update_period = self.sim.dt
 
