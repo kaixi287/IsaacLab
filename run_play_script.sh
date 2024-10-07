@@ -1,17 +1,21 @@
 #!/bin/bash
 load_mlp_runs=(
-    "2024-10-03_20-58-54_mlp_rand_payload"
-    "2024-10-03_21-27-24_mlp_aug_payload"
-    "2024-10-03_21-32-22_mlp_aug_payload"
-    "2024-10-03_21-37-52_mlp_aug_payload"
+    "2024-10-05_23-23-33_mlp_aug_payload"
+    "2024-10-05_23-25-36_mlp_aug_payload"
+    "2024-10-05_23-30-19_mlp_aug_payload"
+    "2024-10-06_04-51-16_mlp_rand_payload"
+    "2024-10-06_04-53-03_mlp_rand_payload"
+    "2024-10-06_04-55-07_mlp_rand_payload"
 )
 
 # Array of load_run arguments
 load_rnn_runs=(
-    "2024-10-03_21-04-13_rnn_rand_payload"
-    "2024-10-03_21-43-25_rnn_aug_payload"
-    "2024-10-03_21-48-44_rnn_aug_payload"
-    "2024-10-03_21-54-05_rnn_aug_payload"
+    "2024-10-05_23-30-49_rnn_aug_payload"
+    "2024-10-06_01-16-19_rnn_aug_payload"
+    "2024-10-06_01-35-01_rnn_aug_payload"
+    "2024-10-06_04-57-15_rnn_rand_payload"
+    "2024-10-06_04-59-19_rnn_rand_payload"
+    "2024-10-06_06-51-34_rnn_rand_payload"
 )
 
 # Loop through each load_run argument

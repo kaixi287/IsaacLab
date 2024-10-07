@@ -147,7 +147,7 @@ class EventCfg:
         mode="reset",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "mass_range": (20.0, 30.0),
+            "mass_range": (15.0, 20.0),
             "x_position_range": (-0.4, 0.4),
             "y_position_range": (-0.08, 0.08),
         },

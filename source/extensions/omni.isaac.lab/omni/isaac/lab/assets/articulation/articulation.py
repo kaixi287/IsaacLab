@@ -259,7 +259,7 @@ class Articulation(AssetBase):
             if not hasattr(self, "green_force_marker"):
                 green_arrow_marker_cfg = GREEN_ARROW_X_MARKER_CFG.copy()
                 green_arrow_marker_cfg.prim_path = "/Visuals/ExternalForce"
-                green_arrow_marker_cfg.markers["arrow"].scale = (0.2, 0.2, 0.5)
+                green_arrow_marker_cfg.markers["arrow"].scale = (0.15, 0.15, 0.5)
                 self.green_force_marker = VisualizationMarkers(green_arrow_marker_cfg)
             self.green_force_marker.set_visibility(True)
 
@@ -268,7 +268,7 @@ class Articulation(AssetBase):
                 if not hasattr(self, "yellow_force_marker"):
                     yellow_arrow_marker_cfg = YELLOW_ARROW_X_MARKER_CFG.copy()
                     yellow_arrow_marker_cfg.prim_path = "/Visuals/ExternalForce"
-                    yellow_arrow_marker_cfg.markers["arrow"].scale = (0.2, 0.2, 0.5)
+                    yellow_arrow_marker_cfg.markers["arrow"].scale = (0.15, 0.15, 0.5)
                     self.yellow_force_marker = VisualizationMarkers(yellow_arrow_marker_cfg)
                 self.yellow_force_marker.set_visibility(True)
 
@@ -365,7 +365,7 @@ class Articulation(AssetBase):
             external_force_quat_b = math_utils.quat_from_angle_axis(rotation_angle, rotation_axis)
 
             external_force_pos_b = self.external_force_positions.clone()
-            external_force_pos_b[:, 2] += 0.2  # Offset the z position to avoid collision with the base
+            external_force_pos_b[:, 2] += 0.25  # Offset the z position to avoid collision with the base
 
             external_force_pos_w, external_force_quat_w = math_utils.combine_frame_transforms(
                 self.data.root_pos_w,
@@ -403,8 +403,7 @@ class Articulation(AssetBase):
                 # Scale and visualize the forces as yellow arrows
                 self.yellow_force_marker.visualize(
                     translations=in_distribution_force_pos_w,
-                    orientations=in_distribution_force_quat_w,
-                    scales=in_distribution_force_scales,
+                    orientations=in_distribution_force_quat_w
                 )
                 self.yellow_force_marker.set_visibility(True)
             else:
@@ -419,7 +418,7 @@ class Articulation(AssetBase):
 
                 # Scale and visualize the forces as green arrows
                 self.green_force_marker.visualize(
-                    translations=ood_force_pos_w, orientations=ood_force_quat_w, scales=ood_force_scales
+                    translations=ood_force_pos_w, orientations=ood_force_quat_w
                 )
                 self.green_force_marker.set_visibility(True)
             else:
