@@ -18,6 +18,7 @@ import carb
 import omni.isaac.core.utils.stage as stage_utils
 import omni.physics.tensors.impl.api as physx
 from omni.isaac.core.utils.types import ArticulationActions
+from operations import itemgetter
 from pxr import PhysxSchema, UsdPhysics
 
 import omni.isaac.lab.sim as sim_utils
@@ -205,7 +206,7 @@ class Articulation(AssetBase):
     """
 
     def update_disabled_joints(self, env_ids: torch.Tensor, joint_to_disable: torch.Tensor):
-        """Update the visibility of joint markers for a specific environment.
+        """Update the joints to disable for specific environments.
 
         Args:
             env_ids (torch.Tensor): Tensor of environment indices, expected shape (num_envs,).
@@ -219,13 +220,12 @@ class Articulation(AssetBase):
         self.all_disabled_joints[env_ids] = joint_to_disable
 
     def update_external_force(self, env_ids: torch.Tensor, forces: torch.Tensor, positions: torch.Tensor):
-        """Update the external forces and their corresponding positions for a specific environment.
+        """Update the external forces and their corresponding positions for specific environments.
 
         Args:
             env_ids (torch.Tensor): Tensor of environment indices, expected shape (num_envs,).
             forces (torch.Tensor): Tensor of forces to apply for the environments, expected shape (num_envs, 3).
-            x_positions (torch.Tensor): Tensor of x positions of the force, expected shape (num_envs,).
-            y_positions (torch.Tensor): Tensor of y positions of the force, expected shape (num_envs,).
+            positions (torch.Tensor): Tensor of positions of the force, expected shape (num_envs, 3).
         """
         if not hasattr(self, "external_forces"):
             # Initialize external_forces tensor if it doesn't exist
@@ -235,6 +235,26 @@ class Articulation(AssetBase):
         # Update the external forces and positions for the specified environments
         self.external_forces[env_ids] = forces.squeeze(1)
         self.external_force_positions[env_ids] = positions.squeeze(1)
+
+    def get_link_ids(self, joint_ids: torch.Tensor) -> list[int]:
+        """Get the link IDs for the specified joint IDs.
+
+        Args:
+            joint_ids: Tensor of joint IDs.
+
+        Returns:
+            Tensor of link IDs.
+        """
+        # Convert joint IDs to joint names
+        joint_names = list(itemgetter(*joint_ids.tolist())(self.joint_names))
+
+        # Convert joint names to link names by replacing 'joint' with 'link'
+        link_names = list(map(lambda x: x.replace("joint", "link"), joint_names))
+
+        # Use find_bodies to get the link IDs and link names
+        link_ids, _ = self.find_bodies(link_names, preserve_order=True)
+
+        return torch.tensor(link_ids, device=joint_ids.device)
 
     def _set_debug_vis_impl(self, debug_vis: bool):
         # create markers if necessary
@@ -296,8 +316,11 @@ class Articulation(AssetBase):
             disable_mask = self.all_disabled_joints != -1
 
             if torch.any(disable_mask):
-                # Filter link IDs to only include those that should be disabled
-                link_ids = self.all_disabled_joints[disable_mask] + 1
+                # Get link IDs corresponding to the disabled joints
+                if "joint" in self.joint_names[0]:
+                    link_ids = self.get_link_ids(self.all_disabled_joints[disable_mask])
+                else:
+                    link_ids = self.all_disabled_joints[disable_mask] + 1
 
                 # Get disabled joint positions only for the environments that should be disabled
                 link_transforms = self.root_physx_view.get_link_transforms()
@@ -396,14 +419,13 @@ class Articulation(AssetBase):
 
             if torch.any(in_distribution_mask):
                 # Visualize in-distribution forces in yellow
-                in_distribution_force_scales = relative_force_scales[in_distribution_mask]
+                # in_distribution_force_scales = relative_force_scales[in_distribution_mask]
                 in_distribution_force_pos_w = external_force_pos_w[in_distribution_mask]
                 in_distribution_force_quat_w = external_force_quat_w[in_distribution_mask]
 
                 # Scale and visualize the forces as yellow arrows
                 self.yellow_force_marker.visualize(
-                    translations=in_distribution_force_pos_w,
-                    orientations=in_distribution_force_quat_w
+                    translations=in_distribution_force_pos_w, orientations=in_distribution_force_quat_w
                 )
                 self.yellow_force_marker.set_visibility(True)
             else:
@@ -412,14 +434,12 @@ class Articulation(AssetBase):
             ood_mask = ~in_distribution_mask
             if torch.any(ood_mask):
                 # Visualize out-of-distribution forces in green
-                ood_force_scales = relative_force_scales[~in_distribution_mask]
+                # ood_force_scales = relative_force_scales[~in_distribution_mask]
                 ood_force_pos_w = external_force_pos_w[~in_distribution_mask]
                 ood_force_quat_w = external_force_quat_w[~in_distribution_mask]
 
                 # Scale and visualize the forces as green arrows
-                self.green_force_marker.visualize(
-                    translations=ood_force_pos_w, orientations=ood_force_quat_w
-                )
+                self.green_force_marker.visualize(translations=ood_force_pos_w, orientations=ood_force_quat_w)
                 self.green_force_marker.set_visibility(True)
             else:
                 self.green_force_marker.set_visibility(False)
