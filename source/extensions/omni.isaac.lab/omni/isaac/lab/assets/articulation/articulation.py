@@ -18,7 +18,6 @@ import carb
 import omni.isaac.core.utils.stage as stage_utils
 import omni.physics.tensors.impl.api as physx
 from omni.isaac.core.utils.types import ArticulationActions
-from operations import itemgetter
 from pxr import PhysxSchema, UsdPhysics
 
 import omni.isaac.lab.sim as sim_utils
@@ -106,7 +105,7 @@ class Articulation(AssetBase):
             cfg: A configuration instance.
         """
         # List to specify in-distribution joints (those to be visualized in pink)
-        self.in_distribution_joint_ids = [0, 4, 8]
+        # self.in_distribution_joint_ids = [0, 4, 8]
         # Define the in-distribution position range for x and y for external forces applied on the base
         self.in_distribution_external_force_positions = [(0.0, 0.4), (0.0, 0.08)]
 
@@ -118,7 +117,7 @@ class Articulation(AssetBase):
         self._debug_vis_handle = None
 
         # set initial state of debug visualization
-        self.set_debug_vis(debug_vis=self.cfg.debug_vis)
+        self.set_debug_vis(debug_vis=True)
 
     def __del__(self):
         """Unsubscribe from the callbacks."""
@@ -246,10 +245,7 @@ class Articulation(AssetBase):
             Tensor of link IDs.
         """
         # Convert joint IDs to joint names
-        joint_names = list(itemgetter(*joint_ids.tolist())(self.joint_names))
-
-        # Convert joint names to link names by replacing 'joint' with 'link'
-        link_names = list(map(lambda x: x.replace("joint", "link"), joint_names))
+        link_names = [self.joint_names[joint_id].replace("joint", "link") for joint_id in joint_ids]
 
         # Use find_bodies to get the link IDs and link names
         link_ids, _ = self.find_bodies(link_names, preserve_order=True)

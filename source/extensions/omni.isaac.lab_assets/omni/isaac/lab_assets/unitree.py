@@ -16,10 +16,10 @@ The following configurations are available:
 Reference: https://github.com/unitreerobotics/unitree_ros
 """
 
-import copy # noqa: I202
+import copy  # noqa: I202
 
 import omni.isaac.lab.sim as sim_utils
-from omni.isaac.lab.actuators import ActuatorNetMLPCfg, DCMotorCfg, ImplicitActuatorCfg, IdealPDActuatorCfg
+from omni.isaac.lab.actuators import ActuatorNetMLPCfg, DCMotorCfg, IdealPDActuatorCfg, ImplicitActuatorCfg
 from omni.isaac.lab.assets.articulation import ArticulationCfg
 from omni.isaac.lab.utils.assets import ISAACLAB_NUCLEUS_DIR
 
@@ -380,7 +380,7 @@ G1_CFG = ArticulationCfg(
 """Configuration for the Unitree G1 Humanoid robot."""
 
 G1_WITH_EXPLICIT_ACTUATOR_CFG = copy.deepcopy(G1_CFG)
-G1_WITH_EXPLICIT_ACTUATOR_CFG.actuators={
+G1_WITH_EXPLICIT_ACTUATOR_CFG.actuators = {
     "legs": IdealPDActuatorCfg(
         joint_names_expr=[
             ".*_hip_yaw_joint",
@@ -411,14 +411,14 @@ G1_WITH_EXPLICIT_ACTUATOR_CFG.actuators={
             "torso_joint": 0.01,
         },
     ),
-    "feet": IdealPDActuatorCfg(
+    "feet": ImplicitActuatorCfg(
         effort_limit=20,
         joint_names_expr=[".*_ankle_pitch_joint", ".*_ankle_roll_joint"],
         stiffness=20.0,
         damping=2.0,
         armature=0.01,
     ),
-    "arms": IdealPDActuatorCfg(
+    "arms": ImplicitActuatorCfg(
         joint_names_expr=[
             ".*_shoulder_pitch_joint",
             ".*_shoulder_roll_joint",

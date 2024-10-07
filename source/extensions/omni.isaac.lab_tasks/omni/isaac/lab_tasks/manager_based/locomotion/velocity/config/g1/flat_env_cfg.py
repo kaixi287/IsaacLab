@@ -41,7 +41,10 @@ class G1FlatEnvCfg(G1RoughEnvCfg):
         self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
 
         # Events
-        self.events.disable_joint.params["asset_cfg"] = SceneEntityCfg("robot", joint_names=[".*_hip_.*",  ".*_knee_joint", ".*_ankle_.*"])
+        if getattr(self.events, "disable_joint", None) is not None:
+            self.events.disable_joint.params["asset_cfg"] = SceneEntityCfg(
+                "robot", joint_names=[".*_hip_.*", ".*_knee_joint", ".*_ankle_.*"]
+            )
 
 
 class G1FlatEnvCfg_PLAY(G1FlatEnvCfg):
@@ -57,4 +60,6 @@ class G1FlatEnvCfg_PLAY(G1FlatEnvCfg):
         # remove random pushing
         self.events.base_external_force_torque = None
         self.events.push_robot = None
-        self.events.disable_joint.params["prob_no_disable"] = 0.0
+        if getattr(self.events, "disable_joint", None) is not None:
+            self.events.disable_joint.params["prob_no_disable"] = 0.0
+            self.scene.robot.debug_vis = True
