@@ -106,6 +106,7 @@ class Articulation(AssetBase):
         """
         # List to specify in-distribution joints (those to be visualized in pink)
         # self.in_distribution_joint_ids = [0, 4, 8]
+        self.in_distribution_joint_ids = [0, 1, 3, 4, 7, 8]
         # Define the in-distribution position range for x and y for external forces applied on the base
         self.in_distribution_external_force_positions = [(0.0, 0.4), (0.0, 0.08)]
 
@@ -248,9 +249,9 @@ class Articulation(AssetBase):
         link_names = [self.joint_names[joint_id].replace("joint", "link") for joint_id in joint_ids]
 
         # Use find_bodies to get the link IDs and link names
-        link_ids, _ = self.find_bodies(link_names, preserve_order=True)
+        link_ids = [self.body_names.index(link_name) for link_name in link_names]
 
-        return torch.tensor(link_ids, device=joint_ids.device)
+        return link_ids
 
     def _set_debug_vis_impl(self, debug_vis: bool):
         # create markers if necessary
@@ -353,7 +354,8 @@ class Articulation(AssetBase):
                     # If no in-distribution joints are specified, visualize all in yellow
                     self.green_joint_marker.visualize(disabled_joint_pos)
                     self.green_joint_marker.set_visibility(True)
-                    self.yellow_joint_marker.set_visibility(False)
+                    if hasattr(self, "yellow_joint_marker"):
+                        self.yellow_joint_marker.set_visibility(False)
         else:
             if hasattr(self, "green_joint_marker"):
                 self.green_joint_marker.set_visibility(False)
