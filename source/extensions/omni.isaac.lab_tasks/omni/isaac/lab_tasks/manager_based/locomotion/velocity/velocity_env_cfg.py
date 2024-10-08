@@ -222,7 +222,7 @@ class EventCfg:
         mode="reset",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "joint_to_disable": -1, # Index of joint to disable
+            "joint_to_disable": [0, 1, 3, 4, 7, 8],  # Index of joint to disable
             "prob_no_disable": 0.2,
         },
     )

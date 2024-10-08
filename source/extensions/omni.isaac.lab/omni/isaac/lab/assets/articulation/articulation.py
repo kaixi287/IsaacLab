@@ -106,9 +106,9 @@ class Articulation(AssetBase):
         """
         # List to specify in-distribution joints (those to be visualized in pink)
         # self.in_distribution_joint_ids = [0, 4, 8]
-        self.in_distribution_joint_ids = [0, 1, 3, 4, 7, 8]
+        self.in_distribution_joint_ids = cfg.in_distribution_joint_ids
         # Define the in-distribution position range for x and y for external forces applied on the base
-        self.in_distribution_external_force_positions = [(0.0, 0.4), (0.0, 0.08)]
+        self.in_distribution_external_force_positions = cfg.in_distribution_external_force_positions
 
         super().__init__(cfg)
         # data for storing actuator group
