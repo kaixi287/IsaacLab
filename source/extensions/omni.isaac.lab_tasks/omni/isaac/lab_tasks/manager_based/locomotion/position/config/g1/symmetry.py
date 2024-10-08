@@ -55,6 +55,8 @@ def _switch_arms_legs_lr(dof):
     dof_switched[..., 0] = dof[..., 1]  # left_hip_pitch_joint <-> right_hip_pitch_joint
     dof_switched[..., 1] = dof[..., 0]
 
+    dof_switched[..., 2] = dof[..., 2] * -1  # torso_joint
+
     dof_switched[..., 3] = dof[..., 4] * -1  # left_hip_roll_joint <-> right_hip_roll_joint (roll -> reverse sign)
     dof_switched[..., 4] = dof[..., 3] * -1
 
