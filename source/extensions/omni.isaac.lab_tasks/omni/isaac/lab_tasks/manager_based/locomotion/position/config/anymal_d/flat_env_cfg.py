@@ -91,7 +91,7 @@ class AnymalDPosTrackingFlatEnvCfg_PLAY(AnymalDPosTrackingFlatEnvCfg):
         if getattr(self.events, "disable_joint", None) is not None:
             self.events.disable_joint.params["prob_no_disable"] = 0.0
             self.scene.robot.debug_vis = True
-            self.scene.robot.in_distribution_joint_ids = [0, 1, 3, 4, 7, 8]
+            self.scene.robot.in_distribution_joint_ids = [0, 4, 8]
 
         if getattr(self.events, "add_payload_to_base", None) is not None:
             self.scene.robot.debug_vis = True

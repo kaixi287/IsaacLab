@@ -62,4 +62,6 @@ class G1FlatEnvCfg_PLAY(G1FlatEnvCfg):
         self.events.push_robot = None
         if getattr(self.events, "disable_joint", None) is not None:
             self.events.disable_joint.params["prob_no_disable"] = 0.0
+            self.events.disable_joint.params["joint_to_disable"] = [11, 12]
+            self.scene.robot.in_distribution_joint_ids = [11, 12]
             self.scene.robot.debug_vis = True
