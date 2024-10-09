@@ -93,26 +93,26 @@ def _switch_arms_legs_lr(dof):
     dof_switched[..., 22] = dof[..., 21] * -1
 
     # Left hand <-> Right hand (fingers: zero, one, two, three, four, five, six)
-    dof_switched[..., 23] = dof[..., 26]  # left_five_joint <-> right_five_joint
-    dof_switched[..., 26] = dof[..., 23]
+    dof_switched[..., 23] = dof[..., 26] * -1  # left_five_joint <-> right_five_joint
+    dof_switched[..., 26] = dof[..., 23] * -1
 
-    dof_switched[..., 24] = dof[..., 27]  # left_three_joint <-> right_three_joint
-    dof_switched[..., 27] = dof[..., 24]
+    dof_switched[..., 24] = dof[..., 27] * -1  # left_three_joint <-> right_three_joint
+    dof_switched[..., 27] = dof[..., 24] * -1
 
-    dof_switched[..., 25] = dof[..., 28]  # left_zero_joint <-> right_zero_joint
-    dof_switched[..., 28] = dof[..., 25]
+    dof_switched[..., 25] = dof[..., 28] * -1  # left_zero_joint <-> right_zero_joint
+    dof_switched[..., 28] = dof[..., 25] * -1
 
-    dof_switched[..., 29] = dof[..., 32]  # left_six_joint <-> right_six_joint
-    dof_switched[..., 32] = dof[..., 29]
+    dof_switched[..., 29] = dof[..., 32] * -1  # left_six_joint <-> right_six_joint
+    dof_switched[..., 32] = dof[..., 29] * -1
 
-    dof_switched[..., 30] = dof[..., 33]  # left_four_joint <-> right_four_joint
-    dof_switched[..., 33] = dof[..., 30]
+    dof_switched[..., 30] = dof[..., 33] * -1  # left_four_joint <-> right_four_joint
+    dof_switched[..., 33] = dof[..., 30] * -1
 
-    dof_switched[..., 31] = dof[..., 34]  # left_one_joint <-> right_one_joint
-    dof_switched[..., 34] = dof[..., 31]
+    dof_switched[..., 31] = dof[..., 34] * -1  # left_one_joint <-> right_one_joint
+    dof_switched[..., 34] = dof[..., 31] * -1
 
-    dof_switched[..., 35] = dof[..., 36]  # left_two_joint <-> right_two_joint
-    dof_switched[..., 36] = dof[..., 35]
+    dof_switched[..., 35] = dof[..., 36] * -1  # left_two_joint <-> right_two_joint
+    dof_switched[..., 36] = dof[..., 35] * -1
 
     return dof_switched
 
