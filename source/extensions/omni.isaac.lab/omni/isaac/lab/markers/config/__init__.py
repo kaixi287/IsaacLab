@@ -166,6 +166,15 @@ YELLOW_JOINT_MARKER_CFG = VisualizationMarkersCfg(
     }
 )
 
+RED_JOINT_MARKER_CFG = VisualizationMarkersCfg(
+    markers={
+        "disabled_joints": sim_utils.SphereCfg(
+            radius=0.1,
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.0, 0.0)),
+        ),
+    }
+)
+
 PINK_JOINT_MARKER_CFG = VisualizationMarkersCfg(
     markers={
         "disabled_joints": sim_utils.SphereCfg(
