@@ -193,6 +193,6 @@ def get_checkpoint_path(
     # sort alphabetically while ensuring that *_10 comes after *_9
     model_checkpoints.sort(key=lambda m: f"{m:0>15}")
     # get latest matched checkpoint file
-    # checkpoint_file = model_checkpoints[-1]
+    checkpoint_file = model_checkpoints[-1]
 
-    return [os.path.join(run_path, checkpoint_file) for checkpoint_file in model_checkpoints]
+    return os.path.join(run_path, checkpoint_file)
