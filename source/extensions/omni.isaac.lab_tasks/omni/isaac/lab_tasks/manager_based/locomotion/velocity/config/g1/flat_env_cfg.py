@@ -45,6 +45,8 @@ class G1FlatEnvCfg(G1RoughEnvCfg):
             self.events.disable_joint.params["asset_cfg"] = SceneEntityCfg(
                 "robot", joint_names=[".*_hip_.*", ".*_knee_joint", ".*_ankle_.*"]
             )
+            self.events.disable_joint.params["prob_no_disable"] = 0.0
+            self.events.disable_joint.params["joint_to_disable"] = [0, 3, 7]
 
 
 class G1FlatEnvCfg_PLAY(G1FlatEnvCfg):

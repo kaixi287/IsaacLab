@@ -8,16 +8,17 @@
 """Launch Isaac Sim Simulator first."""
 
 import argparse
-import glob
 
 from omni.isaac.lab.app import AppLauncher
+
+# import glob
+
 
 # local imports
 import cli_args  # isort: skip
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Train an RL agent with RSL-RL.")
-parser.add_argument("--cpu", action="store_true", default=False, help="Use CPU pipeline.")
 parser.add_argument(
     "--disable_fabric", action="store_true", default=False, help="Disable fabric and use USD I/O operations."
 )
@@ -39,11 +40,13 @@ simulation_app = app_launcher.app
 """Rest everything follows."""
 
 import gymnasium as gym
+
+# import numpy as np
 import os
-import torch
-import sys
-import numpy as np
 import statistics
+
+# import sys
+import torch
 from collections import deque
 
 from rsl_rl.runners import OnPolicyRunner
@@ -51,19 +54,18 @@ from rsl_rl.utils.wandb_utils import WandbSummaryWriter
 
 import omni.isaac.lab_tasks  # noqa: F401
 from omni.isaac.lab_tasks.utils import get_checkpoint_path, parse_env_cfg
-from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
+from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (  # export_policy_as_jit,; export_policy_as_onnx,
     RslRlOnPolicyRunnerCfg,
     RslRlVecEnvWrapper,
-    export_policy_as_jit,
-    export_policy_as_onnx,
 )
+
 
 def log(writer: WandbSummaryWriter, locs: dict, width: int = 80, pad: int = 35):
     # -- Episode info
     ep_string = ""
     if locs["ep_infos"]:
         for key in locs["ep_infos"][0]:
-            infotensor = torch.tensor([], device=torch.device('cpu'))
+            infotensor = torch.tensor([], device=torch.device("cpu"))
             for ep_info in locs["ep_infos"]:
                 # handle scalar and zero dimensional tensor infos
                 if key not in ep_info:
@@ -74,7 +76,7 @@ def log(writer: WandbSummaryWriter, locs: dict, width: int = 80, pad: int = 35):
                     ep_info[key] = ep_info[key].unsqueeze(0)
                 infotensor = torch.cat((infotensor, ep_info[key].to(infotensor.device)))
             # value = torch.mean(infotensor)
-            value = torch.sum(infotensor)/locs["num_episodes"]
+            value = torch.sum(infotensor) / locs["num_episodes"]
             # log to logger and terminal
             if "/" in key:
                 writer.add_scalar(key, value, locs["i"])
@@ -82,22 +84,22 @@ def log(writer: WandbSummaryWriter, locs: dict, width: int = 80, pad: int = 35):
             else:
                 writer.add_scalar("Episode/" + key, value, locs["i"])
                 ep_string += f"""{f'Mean episode {key}:':>{pad}} {value:.4f}\n"""
-    
+
     # -- Training
     if len(locs["rewbuffer"]) > 0:
         # everything else
         writer.add_scalar("Eval/mean_reward", statistics.mean(locs["rewbuffer"]), locs["i"])
         writer.add_scalar("Eval/mean_episode_length", statistics.mean(locs["lenbuffer"]), locs["i"])
-        writer.add_scalar("Eval/success_rate", locs["success_count"]/locs["num_episodes"], locs["i"])
-        writer.add_scalar("Eval/tracking_failure_rate", locs["tracking_failure_count"]/locs["num_episodes"], locs["i"])
-        writer.add_scalar("Eval/early_termination_rate", locs["early_termination_count"]/locs["num_episodes"], locs["i"])
+        # writer.add_scalar("Eval/success_rate", locs["success_count"]/locs["num_episodes"], locs["i"])
+        # writer.add_scalar("Eval/tracking_failure_rate", locs["tracking_failure_count"]/locs["num_episodes"], locs["i"])
+        # writer.add_scalar("Eval/early_termination_rate", locs["early_termination_count"]/locs["num_episodes"], locs["i"])
 
 
 def main():
     """Play with RSL-RL agent."""
     # parse configuration
     env_cfg = parse_env_cfg(
-        args_cli.task, use_gpu=not args_cli.cpu, num_envs=args_cli.num_envs, use_fabric=not args_cli.disable_fabric
+        args_cli.task, device=args_cli.device, num_envs=args_cli.num_envs, use_fabric=not args_cli.disable_fabric
     )
     agent_cfg: RslRlOnPolicyRunnerCfg = cli_args.parse_rsl_rl_cfg(args_cli.task, args_cli)
 
@@ -107,16 +109,13 @@ def main():
         # specify directory for logging experiments
         log_root_path = os.path.join("logs", "rsl_rl", agent_cfg.experiment_name)
     log_root_path = os.path.abspath(log_root_path)
-    # log_file = os.path.join(log_root_path, "evaluation.log")
-    # sys.stdout = open(log_file, 'a')
-    # sys.stderr = open(log_file, 'a')
     print(f"[INFO] Loading experiment from directory: {log_root_path}")
     resume_paths = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
 
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode=None)
     eval_log_dir = os.path.join(log_root_path, agent_cfg.load_run, "evaluation")
-    
+
     # wrap around environment for rsl-rl
     env = RslRlVecEnvWrapper(env)
 
@@ -125,13 +124,13 @@ def main():
         writer = WandbSummaryWriter(log_dir=log_dir, flush_secs=10, cfg=agent_cfg.to_dict())
     else:
         log_dir = None
-    
+
     for resume_path in resume_paths:
         checkpoint_name = os.path.basename(resume_path)
         print(f"[INFO]: Loading model checkpoint from: {resume_path}")
-        
-        iter = int(checkpoint_name.split('_')[1].split('.')[0])
-        
+
+        iter = int(checkpoint_name.split("_")[1].split(".")[0])
+
         with torch.inference_mode():
             # set seed of the environment
             env.seed(agent_cfg.seed)
@@ -148,9 +147,9 @@ def main():
         obs, _ = env.get_observations()
 
         # metrics
-        success_count = 0
-        tracking_failure_count = 0
-        early_termination_count = 0
+        # success_count = 0
+        # tracking_failure_count = 0
+        # early_termination_count = 0
         num_episodes = 0
         ep_infos = []
         rewbuffer = deque(maxlen=1000)
@@ -175,37 +174,38 @@ def main():
                     cur_episode_length[new_ids] = 0
 
                     num_episodes += new_ids.numel()
-                
+
                     if new_ids.numel() > 0:
-                        success_count += infos["success_count"]
-                        tracking_failure_count = infos["tracking_failure_count"]
-                        early_termination_count = infos["early_termination_count"]
+                        # success_count += infos["success_count"]
+                        # tracking_failure_count = infos["tracking_failure_count"]
+                        # early_termination_count = infos["early_termination_count"]
                         # Book keeping
                         if "episode" in infos:
                             ep_infos.append(infos["episode"])
                         elif "log" in infos:
                             ep_infos.append(infos["log"])
-        
-        if iter==0:
+
+        if iter == 0:
             iter = 1
-                                    
+
         # Log infos
         locs = {
             "ep_infos": ep_infos,
             "rewbuffer": rewbuffer,
             "lenbuffer": lenbuffer,
-            "success_count": success_count,
-            "tracking_failure_count": tracking_failure_count,
-            "early_termination_count": early_termination_count,
+            # "success_count": success_count,
+            # "tracking_failure_count": tracking_failure_count,
+            # "early_termination_count": early_termination_count,
             "num_episodes": num_episodes,
-            "i": iter
+            "i": iter,
         }
+        # assert num_episodes == len(rewbuffer)
         log(writer, locs)
-        print(f"Checkpoint: {checkpoint_name}, Collected episodes: {num_episodes}, Mean Reward: {statistics.mean(rewbuffer):.4f}, Mean Episode Length: {statistics.mean(lenbuffer):.4f}, Success Rate: {success_count / num_episodes:.4f}")
+        # print(f"Checkpoint: {checkpoint_name}, Collected episodes: {num_episodes}, Mean Reward: {statistics.mean(rewbuffer):.4f}, Mean Episode Length: {statistics.mean(lenbuffer):.4f}, Success Rate: {success_count / num_episodes:.4f}")
 
     # close the simulator
     env.close()
-    
+
     if log_dir is not None:
         writer.stop()
 

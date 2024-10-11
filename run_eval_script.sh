@@ -2,59 +2,32 @@
 
 # Array of load_run arguments
 load_mlp_runs=(
-    # "2024-08-25_19-17-58_mlp_lf_1"
-    # "2024-08-25_19-39-33_mlp_lf_2"
-    # "2024-08-25_19-46-47_mlp_lf_3"
-    # "2024-08-25_20-38-28_mlp_lf_5"
-    # "2024-08-26_14-58-53_mlp_lf_6"
-    # "2024-08-26_15-53-27_mlp_lf_7"
-    # "2024-08-26_17-00-18_mlp_lf_8"
-    # "2024-08-26_23-41-19_mlp_lf_9"
-    # "2024-08-24_12-20-36_mlp_rand_1"
-    # "2024-08-25_11-01-02_mlp_rand_2"
-    # "2024-08-25_11-12-18_mlp_rand_3"
-    # "2024-08-25_11-27-06_mlp_rand_5"
-    # "2024-08-26_13-25-59_mlp_rand_6"
-    # "2024-08-26_16-03-05_mlp_rand_7"
-    # "2024-08-26_16-20-01_mlp_rand_8"
-    # "2024-08-26_23-14-13_mlp_rand_9"
-    # "2024-08-25_13-55-47_mlp_aug_1"
-    # "2024-08-25_14-56-26_mlp_aug_2"
-    "2024-08-25_15-12-32_mlp_aug_3"
-    "2024-08-25_16-10-01_mlp_aug_5"
-    "2024-08-26_13-34-31_mlp_aug_6"
-    "2024-08-26_19-40-21_mlp_aug_7"
-    "2024-08-26_19-44-17_mlp_aug_8"
-    "2024-08-26_23-19-53_mlp_aug_9"
+    "2024-10-09_13-24-47_mlp_rand_hip"
+    "2024-10-09_20-57-34_mlp_rand_hip"
+    "2024-10-06_21-15-41_mlp_rand_hip"
+    "2024-10-10_12-10-05_mlp_aug_hip"
+    "2024-10-10_13-52-04_mlp_aug_hip"
+    "2024-10-10_12-16-31_mlp_aug_hip"
+    "2024-10-10_14-00-55_mlp_aug_hip"
+    "2024-10-08_17-00-37_mlp_lf_hip"
+    "2024-10-09_18-59-38_mlp_lf_hip"
+    "2024-10-09_16-34-48_mlp_lf_hip"
+    "2024-10-09_16-36-29_mlp_lf_hip"
 )
 
 # Array of load_run arguments
 load_rnn_runs=(
-    "2024-08-24_15-11-15_rnn_rand_1"
-    "2024-08-24_17-07-19_rnn_rand_2"
-    "2024-08-24_18-05-53_rnn_rand_3"
-    "2024-08-25_01-02-51_rnn_rand_5"
-    "2024-08-26_13-18-17_rnn_rand_6"
-    "2024-08-26_15-47-46_rnn_rand_7"
-    "2024-08-26_15-52-59_rnn_rand_8"
-    "2024-08-26_23-07-14_rnn_rand_9"
-    # "2024-08-25_16-16-46_rnn_lf_1"
-    # "2024-08-25_16-27-47_rnn_lf_2"
-    # "2024-08-25_18-07-25_rnn_lf_3"
-    # "2024-08-25_19-10-33_rnn_lf_5"
-    # "2024-08-26_14-45-58_rnn_lf_6"
-    # "2024-08-26_16-37-27_rnn_lf_7"
-    # "2024-08-26_16-43-13_rnn_lf_8"
-    # "2024-08-26_23-37-14_rnn_lf_9"
-    "2024-08-26_23-33-14_rnn_aug_9"
-    "2024-08-25_11-40-32_rnn_aug_1"
-    "2024-08-25_11-53-01_rnn_aug_2"
-    "2024-08-25_12-02-04_rnn_aug_3"
-    "2024-08-25_13-48-35_rnn_aug_5"
-    "2024-08-26_13-52-51_rnn_aug_6"
-    "2024-08-26_18-54-48_rnn_aug_7"
-    "2024-08-26_19-35-46_rnn_aug_8"
-    "2024-08-26_23-33-14_rnn_aug_9"
+    "2024-10-06_21-16-24_rnn_rand_hip"
+    "2024-10-07_23-28-07_rnn_rand_hip"
+    "2024-10-08_00-42-26_rnn_rand_hip"
+    "2024-10-10_12-11-41_rnn_aug_hip"
+    "2024-10-10_12-19-05_rnn_aug_hip"
+    "2024-10-10_14-02-45_rnn_aug_hip"
+    "2024-10-10_14-05-17_rnn_aug_hip"
+    "2024-10-09_19-00-50_rnn_lf_hip"
+    "2024-10-09_19-02-39_rnn_lf_hip"
+    "2024-10-09_19-04-40_rnn_lf_hip"
+    "2024-10-08_17-02-45_rnn_lf_hip"
 )
 
 # Loop through each load_run argument
@@ -71,8 +44,8 @@ for run in "${load_mlp_runs[@]}"; do
     fi
 
     # Execute the command with the current load_run argument and appropriate log_run_name
-    ./docker/cluster/cluster_interface.sh job base --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 1000 --seed 7 --logger wandb --log_project_name position_tracking_oodd_eval2 --log_run_name "$log_run_name" --actor_critic_class_name ActorCritic
-    
+    ./docker/cluster/cluster_interface.sh job base --task Isaac-Velocity-Flat-G1-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 1000 --seed 7 --logger wandb --log_project_name g1_id_eval --log_run_name "$log_run_name" --actor_critic_class_name ActorCritic
+
     # Wait for 10 minutes (600 seconds) before running the next command
     sleep 250
 done
@@ -91,8 +64,8 @@ for run in "${load_rnn_runs[@]}"; do
     fi
 
     # Execute the command with the current load_run argument and appropriate log_run_name
-    ./docker/cluster/cluster_interface.sh job base --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 1000 --seed 7 --logger wandb --log_project_name position_tracking_oodd_eval2 --log_run_name "$log_run_name" --actor_critic_class_name ActorCriticRecurrent
-    
+    ./docker/cluster/cluster_interface.sh job base --task Isaac-Velocity-Flat-G1-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 1000 --seed 7 --logger wandb --log_project_name g1_id_eval --log_run_name "$log_run_name" --actor_critic_class_name ActorCriticRecurrent
+
     # Wait for 10 minutes (600 seconds) before running the next command
     sleep 250
 done
