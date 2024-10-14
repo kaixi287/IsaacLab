@@ -29,7 +29,6 @@ class RslRlPpoActorCriticCfg:
     """The activation function for the actor and critic networks."""
 
 
-
 @configclass
 class RslRlPpoAlgorithmCfg:
     """Configuration for the PPO algorithm."""
@@ -72,15 +71,12 @@ class RslRlPpoAlgorithmCfg:
 
     max_grad_norm: float = MISSING
     """The maximum gradient norm."""
-    
+
     symmetry_cfg: dict | None = None
     """Symmetry augmentation configuration."""
 
-    lr_step_size: int = MISSING
-    """Step size of learning rate scheduler."""
-
-    lr_decay: float = MISSING
-    """Decay factor of learning rate scheduler."""
+    meta_episode_length: int = MISSING
+    """The length of the meta-episode."""
 
 
 @configclass
@@ -138,7 +134,7 @@ class RslRlOnPolicyRunnerCfg:
 
     wandb_project: str = "isaaclab"
     """The wandb project name. Default is "isaaclab"."""
-    
+
     wandb_run_name: str | None = None
     """The wandb run name. Default is None."""
 

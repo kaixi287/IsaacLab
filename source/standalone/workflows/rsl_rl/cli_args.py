@@ -39,15 +39,7 @@ def add_rsl_rl_args(parser: argparse.ArgumentParser):
     arg_group.add_argument(
         "--log_run_name", type=str, default=None, help="Name of the logging run when using wandb or neptune."
     )
-    arg_group.add_argument(
-        "--actor_critic_class_name", type=str, default=None, help="Name of the actor critic class."
-    )
-    arg_group.add_argument(
-        "--lr_step_size", type=int, default=None, help="Step size of learning rate scheduler."
-    )
-    arg_group.add_argument(
-        "--lr_decay", type=float, default=None, help="Decay factor of learning rate."
-    )
+    arg_group.add_argument("--actor_critic_class_name", type=str, default=None, help="Name of the actor critic class.")
 
 
 def parse_rsl_rl_cfg(task_name: str, args_cli: argparse.Namespace) -> RslRlOnPolicyRunnerCfg:
@@ -99,9 +91,5 @@ def update_rsl_rl_cfg(agent_cfg: RslRlOnPolicyRunnerCfg, args_cli: argparse.Name
         agent_cfg.wandb_run_name = args_cli.log_run_name
     if args_cli.actor_critic_class_name is not None:
         agent_cfg.policy.class_name = args_cli.actor_critic_class_name
-    if args_cli.lr_step_size is not None:
-        agent_cfg.algorithm.lr_step_size = args_cli.lr_step_size
-    if args_cli.lr_decay is not None:
-        agent_cfg.algorithm.lr_decay = args_cli.lr_decay
 
     return agent_cfg

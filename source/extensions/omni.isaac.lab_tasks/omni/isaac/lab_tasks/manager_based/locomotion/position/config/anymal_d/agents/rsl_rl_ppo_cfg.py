@@ -39,8 +39,6 @@ class AnymalDPosTrackingEnvPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         lam=0.95,
         desired_kl=0.01,
         max_grad_norm=1.0,
-        lr_step_size=600,
-        lr_decay=0.5,
         # -- Symmetry Augmentation
         symmetry_cfg=dict(
             use_data_augmentation=False,  # this adds symmetric trajectories to the batch
