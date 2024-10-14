@@ -46,12 +46,12 @@ class G1FlatPPORunnerCfg(G1RoughPPORunnerCfg):
     def __post_init__(self):
         super().__post_init__()
 
-        self.max_iterations = 4000
+        self.max_iterations = 3000
         self.experiment_name = "g1_flat"
         self.policy.actor_hidden_dims = [256, 128, 128]
         self.policy.critic_hidden_dims = [256, 128, 128]
         self.algorithm.symmetry_cfg = dict(
-            use_data_augmentation=True,  # this adds symmetric trajectories to the batch
+            use_data_augmentation=False,  # this adds symmetric trajectories to the batch
             use_mirror_loss=False,  # this adds symmetry loss term to the loss function
             data_augmentation_func=(  # specify the data augmentation function if any
                 "omni.isaac.lab_tasks.manager_based.locomotion.position.config.g1.symmetry:get_symmetric_states"

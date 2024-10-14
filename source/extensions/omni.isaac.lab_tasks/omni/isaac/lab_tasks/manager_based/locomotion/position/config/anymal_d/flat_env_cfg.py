@@ -43,14 +43,25 @@ class AnymalDTerminationsCfg(TerminationsCfg):
 @configclass
 class AnymalDRewards(RewardsCfg):
     # TODO: still needed?
+    base_acc = RewTerm(
+        func=mdp.base_acc, weight=-0.001, params={"asset_cfg": SceneEntityCfg("robot", body_names=["base"])}
+    )
     feet_acc = RewTerm(
         func=mdp.feet_acc, weight=-0.002, params={"asset_cfg": SceneEntityCfg("robot", body_names=[".*_FOOT"])}
     )
-    # feet_balance = RewTerm(
-    #     func=mdp.feet_balance,
-    #     weight=-1000,
-    #     params={"duration": 1.0, "command_name": "pose_command", "asset_cfg": SceneEntityCfg("robot", body_names=[".*_FOOT"])}
-    # )
+    applied_torque_limits = RewTerm(func=mdp.applied_torque_limits, weight=-0.2)
+    dof_vel_l2 = RewTerm(func=mdp.joint_vel_l2, weight=-0.001)
+    dof_vel_limits = RewTerm(func=mdp.joint_vel_limits, weight=-1.0, params={"soft_ratio": 0.9})
+    contact_forces = RewTerm(
+        func=mdp.contact_forces,
+        weight=-0.00001,
+        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*"), "threshold": 700.0},
+    )
+    collision = RewTerm(
+        func=mdp.collision,
+        weight=-0.5,
+        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*(THIGH|SHANK)")},
+    )
 
 
 ##
@@ -78,6 +89,9 @@ class AnymalDPosTrackingFlatEnvCfg(PosTrackingEnvCfg):
         self.scene.height_scanner = None
         self.observations.policy.height_scan = None
         self.observations.critic.height_scan = None
+
+        # Rewards
+        # self.rewards.ang_vel_xy_l2.weight = 0.0
 
         # Set debug visualization for disabled joints
         if getattr(self.events, "disable_joint", None) is not None:

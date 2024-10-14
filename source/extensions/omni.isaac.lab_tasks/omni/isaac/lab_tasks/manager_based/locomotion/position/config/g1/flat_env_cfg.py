@@ -3,14 +3,12 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
+from omni.isaac.lab.managers import RewardTermCfg as RewTerm
+from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.utils import configclass
 
-from omni.isaac.lab.managers import SceneEntityCfg
-from omni.isaac.lab.managers import RewardTermCfg as RewTerm
-from omni.isaac.lab_tasks.manager_based.locomotion.position.position_env_cfg import PosTrackingEnvCfg, RewardsCfg
-
 import omni.isaac.lab_tasks.manager_based.locomotion.position.mdp as mdp
-
+from omni.isaac.lab_tasks.manager_based.locomotion.position.position_env_cfg import PosTrackingEnvCfg, RewardsCfg
 
 ##
 # Pre-defined configs
@@ -21,11 +19,17 @@ from omni.isaac.lab_assets import G1_MINIMAL_CFG  # isort: skip
 # MDP settings
 ##
 
+
 @configclass
 class G1Rewards(RewardsCfg):
+    tracking_pos = RewTerm(
+        func=mdp.tracking_pos2,
+        weight=10.0,
+        params={"duration": 3.0, "command_name": "pose_command"},
+    )
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_positive_biped,
-        weight=0.25,
+        weight=0.75,
         params={
             "command_name": "pose_command",
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
@@ -40,7 +44,25 @@ class G1Rewards(RewardsCfg):
             "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
         },
     )
-
+    # Penalize knee and hip joint accelerations
+    dof_acc_l2 = RewTerm(
+        func=mdp.joint_acc_l2,
+        weight=-1.0e-7,
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_.*", ".*_knee_joint"])},
+    )
+    # base_acc = RewTerm(
+    #     func=mdp.base_acc, weight=-0.001, params={"asset_cfg": SceneEntityCfg("robot", body_names=["torso_link"])}
+    # )
+    # applied_torque_limits = RewTerm(func=mdp.applied_torque_limits, weight=-0.2)
+    # dof_vel_l2 = RewTerm(
+    #     func=mdp.joint_vel_l2,
+    #     weight=-0.001,
+    #     params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_.*", ".*_knee_joint"]
+    #     )})
+    # dof_vel_limits = RewTerm(
+    #     func=mdp.joint_vel_limits,
+    #     weight=-1.0,
+    #     params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_ankle_pitch_joint", ".*_ankle_roll_joint"]), "soft_ratio": 0.9})
     # Penalize ankle joint limits
     dof_pos_limits = RewTerm(
         func=mdp.joint_pos_limits,
@@ -93,6 +115,7 @@ class G1Rewards(RewardsCfg):
         params={"asset_cfg": SceneEntityCfg("robot", joint_names="torso_joint")},
     )
 
+
 ##
 # Environment configuration
 ##
@@ -100,13 +123,26 @@ class G1Rewards(RewardsCfg):
 
 @configclass
 class G1PosTrackingFlatEnvCfg(PosTrackingEnvCfg):
-    """Configuration for the locomotion velocity-tracking environment."""
+    """Configuration for the locomotion position-tracking environment."""
+
+    rewards: RewardsCfg = G1Rewards()
 
     def __post_init__(self):
         """Post initialization."""
+        # post init of parent
+        super().__post_init__()
         # Scene
         self.scene.robot = G1_MINIMAL_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
-        self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/torso_link"
+        # change terrain to flat
+        self.scene.terrain.terrain_type = "plane"
+        self.scene.terrain.terrain_generator = None
+        # no height scan
+        self.scene.height_scanner = None
+        self.observations.policy.height_scan = None
+        self.observations.critic.height_scan = None
+
+        self.events.push_robot = None
+        self.events.add_base_mass = None
         self.events.reset_robot_joints.params["position_range"] = (1.0, 1.0)
         self.events.reset_base.params = {
             "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
@@ -119,27 +155,24 @@ class G1PosTrackingFlatEnvCfg(PosTrackingEnvCfg):
                 "yaw": (0.0, 0.0),
             },
         }
-        
+
         # Termination
-        self.terminations.base_contact.params = {"sensor_cfg": SceneEntityCfg("contact_forces", body_names="torso_link"), "threshold": 1.0}
-        
+        self.terminations.base_contact.params = {
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="torso_link"),
+            "threshold": 1.0,
+        }
+
         # Rewards
-        self.rewards.lin_vel_z_l2.weight = 0.0
-        # self.rewards.undesired_contacts = None
+        self.rewards.lin_vel_z_l2.weight = -0.2
         self.rewards.action_rate_l2.weight = -0.005
-        # self.rewards.dof_acc_l2.weight = -1.25e-7
-        # self.rewards.dof_acc_l2.params["asset_cfg"] = SceneEntityCfg(
-        #     "robot", joint_names=[".*_hip_.*", ".*_knee_joint"]
-        # )
-        self.rewards.dof_torques_l2.weight = -1.5e-7
+        self.rewards.dof_torques_l2.weight = -2.0e-6
         self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
             "robot", joint_names=[".*_hip_.*", ".*_knee_joint", ".*_ankle_.*"]
         )
-        self.rewards.base_acc.params["asset_cfg"] = SceneEntityCfg(
-            "robot", body_names=["torso_link"]
-        )
-        
-        
+        self.rewards.dont_wait = None
+        self.rewards.stand_still = None
+
+
 class G1PosTrackingFlatEnvCfg_PLAY(G1PosTrackingFlatEnvCfg):
     def __post_init__(self) -> None:
         # post init of parent
