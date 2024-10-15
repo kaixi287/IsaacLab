@@ -45,6 +45,8 @@ class G1FlatEnvCfg(G1RoughEnvCfg):
             self.events.disable_joint.params["asset_cfg"] = SceneEntityCfg(
                 "robot", joint_names=[".*_hip_.*", ".*_knee_joint", ".*_ankle_.*"]
             )
+        if getattr(self.events, "add_payload_to_body", None) is not None:
+            self.events.add_payload_to_body.params["z_position_range"] = (0.31, 0.31)
 
 
 class G1FlatEnvCfg_PLAY(G1FlatEnvCfg):
@@ -61,5 +63,9 @@ class G1FlatEnvCfg_PLAY(G1FlatEnvCfg):
         self.events.base_external_force_torque = None
         self.events.push_robot = None
         if getattr(self.events, "disable_joint", None) is not None:
+            self.scene.robot.debug_vis = True
+            self.scene.robot.in_distribution_joint_ids = [0, 3, 7]
             self.events.disable_joint.params["prob_no_disable"] = 0.0
-            self.events.disable_joint.params["joint_to_disable"] = [0, 3, 7]
+        if getattr(self.events, "add_payload_to_body", None) is not None:
+            self.scene.robot.debug_vis = True
+            self.scene.robot.in_distribution_external_force_positions = [(-0.07, 0.07), (0.08, 0.11)]

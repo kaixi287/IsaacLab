@@ -217,15 +217,32 @@ class EventCfg:
         params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)}},
     )
 
-    disable_joint = EventTerm(
-        func=mdp.disable_joint,
+    add_payload_to_body = EventTerm(
+        func=mdp.add_payload_to_body,
         mode="reset",
         params={
-            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "joint_to_disable": [0, 3, 7],  # Index of joint to disable
-            "prob_no_disable": 0.2,
+            # "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+            # "mass_range": (15.0, 20.0),
+            # "x_position_range": (0.0, 0.4),
+            # "y_position_range": (0.0, 0.08),
+            # "z_position_range": (0.1325, 0.1325),
+            "asset_cfg": SceneEntityCfg("robot", body_names="torso_link"),
+            "mass_range": (40.0, 50.0),
+            "x_position_range": (-0.07, 0.07),
+            "y_position_range": [(-0.11, -0.08), (0.08, 0.11)],
+            "z_position_range": (0.31, 0.31),
         },
     )
+
+    # disable_joint = EventTerm(
+    #     func=mdp.disable_joint,
+    #     mode="reset",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+    #         "joint_to_disable": [0, 3, 7],  # Index of joint to disable
+    #         "prob_no_disable": 0.2,
+    #     },
+    # )
 
 
 @configclass

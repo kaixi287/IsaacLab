@@ -91,13 +91,11 @@ class AnymalDPosTrackingFlatEnvCfg(PosTrackingEnvCfg):
         self.observations.critic.height_scan = None
 
         # Rewards
-        # self.rewards.ang_vel_xy_l2.weight = 0.0
+        if getattr(self.rewards, "ang_vel_xy_l2", None) is not None:
+            self.rewards.ang_vel_xy_l2.weight = 0.0
 
-        # Set debug visualization for disabled joints
-        if getattr(self.events, "disable_joint", None) is not None:
-            self.scene.robot.debug_vis = True
-        if getattr(self.events, "add_payload_to_base", None) is not None:
-            self.scene.robot.debug_vis = True
+        if getattr(self.events, "add_payload_to_body", None) is not None:
+            self.events.add_payload_to_body.params["z_position_range"] = (0.1325, 0.1325)
 
 
 class AnymalDPosTrackingFlatEnvCfg_PLAY(AnymalDPosTrackingFlatEnvCfg):
@@ -114,3 +112,11 @@ class AnymalDPosTrackingFlatEnvCfg_PLAY(AnymalDPosTrackingFlatEnvCfg):
         self.terminations.illegal_force = None
         self.terminations.illegal_force_feet = None
         # self.events.disable_joint.params["prob_no_disable"] = 0.0
+        if getattr(self.events, "disable_joint", None) is not None:
+            self.scene.robot.debug_vis = True
+            self.scene.robot.in_distribution_joint_ids = [0, 4, 8]
+            self.events.disable_joint.params["prob_no_disable"] = 0.0
+            self.events.disable_joint.params["joint_to_disable"] = -1
+        if getattr(self.events, "add_payload_to_body", None) is not None:
+            self.scene.robot.debug_vis = True
+            self.scene.robot.in_distribution_external_force_positions = [(0.0, 0.4), (0.0, 0.08)]

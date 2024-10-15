@@ -50,3 +50,9 @@ class ArticulationCfg(AssetBaseCfg):
 
     actuators: dict[str, ActuatorBaseCfg] = MISSING
     """Actuators for the robot with corresponding joint names."""
+
+    in_distribution_joint_ids: list[int] = []
+    """In-distribution joint IDs, for visualization usage."""
+
+    in_distribution_external_force_positions: list[tuple[float, float]] = []
+    """In-distribution position range for external forces, for visualization usage."""

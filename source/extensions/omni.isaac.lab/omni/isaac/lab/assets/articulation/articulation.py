@@ -28,7 +28,7 @@ from omni.isaac.lab.markers import VisualizationMarkers
 from omni.isaac.lab.markers.config import (
     GREEN_ARROW_X_MARKER_CFG,
     GREEN_JOINT_MARKER_CFG,
-    YELLOW_ARROW_Z_MARKER_CFG,
+    YELLOW_ARROW_X_MARKER_CFG,
     YELLOW_JOINT_MARKER_CFG,
 )
 
@@ -104,10 +104,12 @@ class Articulation(AssetBase):
         Args:
             cfg: A configuration instance.
         """
-        # List to specify in-distribution joints (those to be visualized in pink)
-        self.in_distribution_joint_ids = [0, 4, 8]
-        # Define the in-distribution position range for x and y for external forces applied on the base
-        self.in_distribution_external_force_positions = [(0.0, 0.4), (0.0, 0.08), (-torch.inf, torch.inf)]
+        # List to specify in-distribution joints
+        self.in_distribution_joint_ids = cfg.in_distribution_joint_ids
+        # Define the in-distribution position range for external forces applied on the robot
+        self.in_distribution_external_force_positions = cfg.in_distribution_external_force_positions
+        # Ids of the body on which the external forces are applied
+        self.external_force_body_ids = None
 
         super().__init__(cfg)
         # data for storing actuator group
@@ -205,7 +207,7 @@ class Articulation(AssetBase):
     """
 
     def update_disabled_joints(self, env_ids: torch.Tensor, joint_to_disable: torch.Tensor):
-        """Update the visibility of joint markers for a specific environment.
+        """Update the joints to disable for specific environments.
 
         Args:
             env_ids (torch.Tensor): Tensor of environment indices, expected shape (num_envs,).
@@ -218,15 +220,17 @@ class Articulation(AssetBase):
         # Update the joint IDs for the specified environments
         self.all_disabled_joints[env_ids] = joint_to_disable
 
-    def update_external_force(self, env_ids: torch.Tensor, forces: torch.Tensor, positions: torch.Tensor):
-        """Update the external forces and their corresponding positions for a specific environment.
+    def update_external_force(
+        self, forces: torch.Tensor, positions: torch.Tensor, env_ids: torch.Tensor, body_ids: Sequence[int]
+    ):
+        """Update the external forces and their corresponding positions for specific environments.
 
         Args:
             env_ids (torch.Tensor): Tensor of environment indices, expected shape (num_envs,).
             forces (torch.Tensor): Tensor of forces to apply for the environments, expected shape (num_envs, 3).
-            x_positions (torch.Tensor): Tensor of x positions of the force, expected shape (num_envs,).
-            y_positions (torch.Tensor): Tensor of y positions of the force, expected shape (num_envs,).
+            positions (torch.Tensor): Tensor of positions of the force, expected shape (num_envs, 3).
         """
+        # TODO: check if we can directly use self.external_forces_b
         if not hasattr(self, "external_forces"):
             # Initialize external_forces tensor if it doesn't exist
             self.external_forces = torch.zeros((len(env_ids), 3), device=forces.device)
@@ -236,41 +240,60 @@ class Articulation(AssetBase):
         self.external_forces[env_ids] = forces.squeeze(1)
         self.external_force_positions[env_ids] = positions.squeeze(1)
 
+        self.external_force_body_ids = body_ids[0]
+
+    def get_link_ids(self, joint_ids: torch.Tensor) -> list[int]:
+        """Get the link IDs for the specified joint IDs.
+
+        Args:
+            joint_ids: Tensor of joint IDs.
+
+        Returns:
+            Tensor of link IDs.
+        """
+        # Convert joint IDs to joint names
+        link_names = [self.joint_names[joint_id].replace("joint", "link") for joint_id in joint_ids]
+
+        # Use find_bodies to get the link IDs and link names
+        link_ids = [self.body_names.index(link_name) for link_name in link_names]
+
+        return link_ids
+
     def _set_debug_vis_impl(self, debug_vis: bool):
         # create markers if necessary
         if debug_vis:
-            # Create markers for failed joints
-            if not hasattr(self, "green_joint_marker"):
-                green_marker_cfg = GREEN_JOINT_MARKER_CFG.copy()
-                green_marker_cfg.prim_path = "/Visuals/Joints/Green"
-                self.green_joint_marker = VisualizationMarkers(green_marker_cfg)
-            # set visibility to true
-            self.green_joint_marker.set_visibility(True)
+            # Create yellow markers for failed joints
+            if not hasattr(self, "yellow_joint_marker"):
+                yellow_marker_cfg = YELLOW_JOINT_MARKER_CFG.copy()
+                yellow_marker_cfg.prim_path = "/Visuals/Joints/Yellow"
+                self.yellow_joint_marker = VisualizationMarkers(yellow_marker_cfg)
+            self.yellow_joint_marker.set_visibility(True)
 
-            # Use yellow markers for in-distribution failed joints
+            # If we differentiate between in-distribution and OOD joints, create green markers for OOD ones
             if self.in_distribution_joint_ids:
-                if not hasattr(self, "yellow_joint_marker"):
-                    yellow_marker_cfg = YELLOW_JOINT_MARKER_CFG.copy()
-                    yellow_marker_cfg.prim_path = "/Visuals/Joints/Yellow"
-                    self.yellow_joint_marker = VisualizationMarkers(yellow_marker_cfg)
-                self.yellow_joint_marker.set_visibility(True)
+                if not hasattr(self, "green_joint_marker"):
+                    green_marker_cfg = GREEN_JOINT_MARKER_CFG.copy()
+                    green_marker_cfg.prim_path = "/Visuals/Joints/Green"
+                    self.green_joint_marker = VisualizationMarkers(green_marker_cfg)
+                # set visibility to true
+                self.green_joint_marker.set_visibility(True)
 
-            # Create arrow markers for external forces (payload)
-            if not hasattr(self, "green_force_marker"):
-                green_arrow_marker_cfg = GREEN_ARROW_X_MARKER_CFG.copy()
-                green_arrow_marker_cfg.prim_path = "/Visuals/ExternalForce"
-                green_arrow_marker_cfg.markers["arrow"].scale = (0.1, 0.1, 1.0)
-                self.green_force_marker = VisualizationMarkers(green_arrow_marker_cfg)
-            self.green_force_marker.set_visibility(True)
+            # Create yellow markers for external forces
+            if not hasattr(self, "yellow_force_marker"):
+                yellow_arrow_marker_cfg = YELLOW_ARROW_X_MARKER_CFG.copy()
+                yellow_arrow_marker_cfg.prim_path = "/Visuals/ExternalForce"
+                yellow_arrow_marker_cfg.markers["arrow"].scale = (0.15, 0.15, 0.5)
+                self.yellow_force_marker = VisualizationMarkers(yellow_arrow_marker_cfg)
+            self.yellow_force_marker.set_visibility(True)
 
-            # Use yellow markers for in-distribution external forces
+            # If we differentiate between in-distribution and OOD external forces, create green markers for OOD ones
             if self.in_distribution_external_force_positions:
-                if not hasattr(self, "yellow_force_marker"):
-                    yellow_arrow_marker_cfg = YELLOW_ARROW_Z_MARKER_CFG.copy()
-                    yellow_arrow_marker_cfg.prim_path = "/Visuals/ExternalForce"
-                    yellow_arrow_marker_cfg.markers["arrow"].scale = (0.1, 0.1, 1.0)
-                    self.yellow_force_marker = VisualizationMarkers(yellow_arrow_marker_cfg)
-                self.yellow_force_marker.set_visibility(True)
+                if not hasattr(self, "green_force_marker"):
+                    green_arrow_marker_cfg = GREEN_ARROW_X_MARKER_CFG.copy()
+                    green_arrow_marker_cfg.prim_path = "/Visuals/ExternalForce"
+                    green_arrow_marker_cfg.markers["arrow"].scale = (0.15, 0.15, 0.5)
+                    self.green_force_marker = VisualizationMarkers(green_arrow_marker_cfg)
+                self.green_force_marker.set_visibility(True)
 
         else:
             # Set visibility of joint failure marker to false
@@ -291,13 +314,16 @@ class Articulation(AssetBase):
             return
 
         # Check if there are environments and joints to process
-        if hasattr(self, "all_disabled_joints"):
+        if hasattr(self, "all_disabled_joints") and torch.any(self.all_disabled_joints != -1):
             # Create a mask to filter out environments where no joint should be disabled
             disable_mask = self.all_disabled_joints != -1
 
             if torch.any(disable_mask):
-                # Filter link IDs to only include those that should be disabled
-                link_ids = self.all_disabled_joints[disable_mask] + 1
+                # Get link IDs corresponding to the disabled joints
+                if "joint" in self.joint_names[0]:
+                    link_ids = self.get_link_ids(self.all_disabled_joints[disable_mask])
+                else:
+                    link_ids = self.all_disabled_joints[disable_mask] + 1
 
                 # Get disabled joint positions only for the environments that should be disabled
                 link_transforms = self.root_physx_view.get_link_transforms()
@@ -305,6 +331,7 @@ class Articulation(AssetBase):
                 # (num_envs, num_joints_to_disable, 3) --> (num_envs * num_joints_to_disable, 3)
                 disabled_joint_pos = disabled_joint_pos.view(-1, 3)
 
+                in_distribution_mask = torch.ones_like(self.all_disabled_joints, dtype=torch.bool)
                 if self.in_distribution_joint_ids:
                     # Separate the joints for visualization
                     in_distribution_mask = torch.isin(
@@ -312,29 +339,25 @@ class Articulation(AssetBase):
                         torch.tensor(self.in_distribution_joint_ids, device=self.device),
                     )
 
-                    if torch.any(in_distribution_mask):
-                        # Visualize in-distribution joints in yellow
-                        yellow_joint_pos = disabled_joint_pos[in_distribution_mask]
-                        self.yellow_joint_marker.visualize(yellow_joint_pos)
-                        self.yellow_joint_marker.set_visibility(True)
-                    else:
-                        # Set visibility to false if no in-distribution joints are found
-                        self.yellow_joint_marker.set_visibility(False)
-
-                    ood_mask = ~in_distribution_mask
-                    if torch.any(ood_mask):
-                        # Visualize out-of-distribution joints in green
-                        green_joint_pos = disabled_joint_pos[ood_mask]
-                        self.green_joint_marker.visualize(green_joint_pos)
-                        self.green_joint_marker.set_visibility(True)
-                    else:
-                        # Set visibility to false if no out-of-distribution joints are found
-                        self.green_joint_marker.set_visibility(False)
+                if torch.any(in_distribution_mask):
+                    # Visualize in-distribution joints in yellow
+                    yellow_joint_pos = disabled_joint_pos[in_distribution_mask]
+                    self.yellow_joint_marker.visualize(yellow_joint_pos)
+                    self.yellow_joint_marker.set_visibility(True)
                 else:
-                    # If no in-distribution joints are specified, visualize all in yellow
-                    self.green_joint_marker.visualize(disabled_joint_pos)
-                    self.green_joint_marker.set_visibility(True)
+                    # Set visibility to false if no in-distribution joints are found
                     self.yellow_joint_marker.set_visibility(False)
+
+                ood_mask = ~in_distribution_mask
+                if torch.any(ood_mask):
+                    # Visualize out-of-distribution joints in green
+                    green_joint_pos = disabled_joint_pos[ood_mask]
+                    self.green_joint_marker.visualize(green_joint_pos)
+                    self.green_joint_marker.set_visibility(True)
+                else:
+                    # Set visibility to false if no out-of-distribution joints are found
+                    self.green_joint_marker.set_visibility(False)
+
         else:
             if hasattr(self, "green_joint_marker"):
                 self.green_joint_marker.set_visibility(False)
@@ -343,23 +366,69 @@ class Articulation(AssetBase):
 
         # Check if there are external forces to process
         if hasattr(self, "external_forces"):
-            # Get the external force positions and orientations in world frame
-            external_force_pos_w, external_force_quat_w = math_utils.combine_frame_transforms(
-                self.data.root_pos_w, self.data.root_quat_w, self.external_force_positions
+            # Compute the norm (magnitude) of each force vector (along the last dimension)
+            force_direction = math_utils.normalize(self.external_forces)
+
+            # Using x-axis as reference axis, since the default orientation of the arrow marker is along the x-axis
+            x_axis = (
+                torch.tensor([1.0, 0.0, 0.0], device=force_direction.device).unsqueeze(0).expand_as(force_direction)
             )
 
-            # Create masks for in-distribution and out-of-distribution positions
-            in_distribution_mask = (
-                (self.external_force_positions[:, 0] >= self.in_distribution_external_force_positions[0][0])
-                & (self.external_force_positions[:, 0] <= self.in_distribution_external_force_positions[0][1])
-                & (self.external_force_positions[:, 1] >= self.in_distribution_external_force_positions[1][0])
-                & (self.external_force_positions[:, 1] <= self.in_distribution_external_force_positions[1][1])
+            # Compute the rotation axis as the cross product of z-axis and force direction
+            rotation_axis = torch.cross(x_axis, force_direction, dim=-1)
+            rotation_axis = math_utils.normalize(rotation_axis)
+
+            # Compute the angle between z-axis and the force direction using dot product
+            dot_product = torch.clamp(
+                torch.sum(x_axis * force_direction, dim=-1), -1.0, 1.0
+            )  # Clamp to avoid numerical errors
+            rotation_angle = torch.acos(dot_product)  # This is the angle between the two vectors
+
+            # Now compute the quaternion using quat_from_angle_axis
+            external_force_quat_b = math_utils.quat_from_angle_axis(rotation_angle, rotation_axis)
+
+            external_force_pos_b = self.external_force_positions.clone()
+            # external_force_pos_b[:, 2] += 0.25  # For ANYMAL: Offset the z position to avoid collision with the base
+            external_force_pos_b[:, 2] += 0.33  # For G1: Offset the z position to avoid collision with the torso
+
+            # external_force_pos_w, external_force_quat_w = math_utils.combine_frame_transforms(
+            #     self.data.root_pos_w,
+            #     self.data.root_quat_w,
+            #     external_force_pos_b,
+            #     external_force_quat_b,
+            # )
+            external_force_pos_w, external_force_quat_w = math_utils.combine_frame_transforms(
+                self.data.body_pos_w[:, self.external_force_body_ids],
+                self.data.body_quat_w[:, self.external_force_body_ids],
+                external_force_pos_b,
+                external_force_quat_b,
             )
+
+            in_distribution_mask = torch.ones(self.external_force_positions.shape[0], dtype=torch.bool)
+            if self.in_distribution_external_force_positions:
+                # Create masks for in-distribution and out-of-distribution positions
+                in_distribution_mask = (
+                    (self.external_force_positions[:, 0] >= self.in_distribution_external_force_positions[0][0])
+                    & (self.external_force_positions[:, 0] <= self.in_distribution_external_force_positions[0][1])
+                    & (self.external_force_positions[:, 1] >= self.in_distribution_external_force_positions[1][0])
+                    & (self.external_force_positions[:, 1] <= self.in_distribution_external_force_positions[1][1])
+                )
+
+            # Normalize the forces to get the relative scales for visualization
+            # force_magnitudes = torch.norm(self.external_forces, dim=-1)
+            # # Interpolate the scales based on the force magnitudes
+            # interpolated_scales = 0.5 + 0.5 * (force_magnitudes / 9.81 - 20) / (30 - 20)
+
+            # # Clamp to ensure scales are within bounds
+            # interpolated_scales = torch.clamp(interpolated_scales, min=0.5, max=1.0)
+
+            # # Create the relative_scale tensor with the interpolated values for x and y, and constant 1.0 for z
+            # relative_force_scales = torch.ones((self.external_forces.shape[0], 3), device=self.external_forces.device)
+            # relative_force_scales[:, :2] = interpolated_scales.unsqueeze(-1)  # Apply the scale to the x and y axes
 
             if torch.any(in_distribution_mask):
                 # Visualize in-distribution forces in yellow
-                # in_distribution_forces = self.external_forces[in_distribution_mask]
-                # in_distribution_force_scales = torch.norm(in_distribution_forces, dim=-1, keepdim=True)
+                # in_distribution_force_scales = relative_force_scales[in_distribution_mask]
                 in_distribution_force_pos_w = external_force_pos_w[in_distribution_mask]
                 in_distribution_force_quat_w = external_force_quat_w[in_distribution_mask]
 
@@ -369,21 +438,22 @@ class Articulation(AssetBase):
                 )
                 self.yellow_force_marker.set_visibility(True)
             else:
-                self.yellow_force_marker.set_visibility(False)
+                if hasattr(self, "yellow_force_marker"):
+                    self.yellow_force_marker.set_visibility(False)
 
             ood_mask = ~in_distribution_mask
             if torch.any(ood_mask):
                 # Visualize out-of-distribution forces in green
-                # ood_forces = self.external_forces[ood_mask]
-                # ood_force_scales = torch.norm(ood_forces, dim=-1, keepdim=True)
-                ood_force_pos_w = external_force_pos_w[ood_mask]
-                ood_force_quat_w = external_force_quat_w[ood_mask]
+                # ood_force_scales = relative_force_scales[~in_distribution_mask]
+                ood_force_pos_w = external_force_pos_w[~in_distribution_mask]
+                ood_force_quat_w = external_force_quat_w[~in_distribution_mask]
 
                 # Scale and visualize the forces as green arrows
                 self.green_force_marker.visualize(translations=ood_force_pos_w, orientations=ood_force_quat_w)
                 self.green_force_marker.set_visibility(True)
             else:
-                self.green_force_marker.set_visibility(False)
+                if hasattr(self, "green_force_marker"):
+                    self.green_force_marker.set_visibility(False)
         else:
             if hasattr(self, "yellow_force_marker"):
                 self.yellow_force_marker.set_visibility(False)
@@ -1478,10 +1548,6 @@ class Articulation(AssetBase):
                 joints_to_disable = torch.where(
                     actuator_joint_indices.unsqueeze(1) == self.all_disabled_joints[is_disabled_joint_controlled]
                 )[0]
-
-                # Reorder joints_to_disable according to the original order of self.all_disabled_joints
-                sorted_indices = torch.argsort(self.all_disabled_joints[is_disabled_joint_controlled])
-                joints_to_disable = joints_to_disable[torch.argsort(sorted_indices)]
 
                 # Set the relevant disabled joint ids
                 disabled_joint_ids[is_disabled_joint_controlled] = joints_to_disable

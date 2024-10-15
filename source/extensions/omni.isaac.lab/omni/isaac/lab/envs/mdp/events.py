@@ -31,6 +31,7 @@ from omni.isaac.lab.terrains import TerrainImporter
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedEnv
 
+
 def disable_joint(
     env: ManagerBasedEnv,
     env_ids: torch.Tensor | None,
@@ -49,7 +50,7 @@ def disable_joint(
         env (BaseEnv): The environment object.
         env_ids (torch.Tensor | None): The environment IDs to apply the randomization to.
         asset_cfg (SceneEntityCfg): Configuration for the asset to modify.
-        joint_to_disable (int | list | None): The index of the joint to block, a list of indices to sample from, 
+        joint_to_disable (int | list | None): The index of the joint to block, a list of indices to sample from,
                                               or -1 to block a random joint, or None to block no joint.
         prob_no_disable (float): The probability of not disabling any joints. Should be between 0 and 1.
 
@@ -61,14 +62,13 @@ def disable_joint(
     if joint_to_disable is None:
         # No joints to disable
         return
-    
+
     # extract the used quantities (to enable type-hinting)
     asset: Articulation = env.scene[asset_cfg.name]
 
     if not isinstance(asset, Articulation):
         raise ValueError(
-            f"Event term 'disable_joint' not supported for asset: '{asset_cfg.name}'"
-            f" with type: '{type(asset)}'."
+            f"Event term 'disable_joint' not supported for asset: '{asset_cfg.name}' with type: '{type(asset)}'."
         )
 
     # resolve environment ids
@@ -636,12 +636,14 @@ def apply_external_force_torque(
     # note: these are only applied when you call: `asset.write_data_to_sim()`
     asset.set_external_force_and_torque(forces, torques, env_ids=env_ids, body_ids=asset_cfg.body_ids)
 
-def add_payload_to_base(
+
+def add_payload_to_body(
     env: ManagerBasedEnv,
-    env_ids: torch.Tensor,
+    env_ids: torch.Tensor | None,
     mass_range: tuple[float, float],
-    x_position_range: tuple[float, float],
-    y_position_range: tuple[float, float],
+    x_position_range: tuple[float, float] | list[tuple[float, float]] = (0.0, 0.0),
+    y_position_range: tuple[float, float] | list[tuple[float, float]] = (0.0, 0.0),
+    z_position_range: tuple[float, float] | list[tuple[float, float]] = (0.0, 0.0),
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot", body_names="base"),
 ):
     """Simulate a payload being carried by the robot by applying forces and computing corresponding torques.
@@ -663,14 +665,13 @@ def add_payload_to_base(
 
     if not isinstance(asset, Articulation):
         raise ValueError(
-            f"Event term 'disable_joint' not supported for asset: '{asset_cfg.name}'"
-            f" with type: '{type(asset)}'."
+            f"Event term 'disable_joint' not supported for asset: '{asset_cfg.name}' with type: '{type(asset)}'."
         )
-    
+
     # resolve environment ids
     if env_ids is None:
         env_ids = torch.arange(env.scene.num_envs, device=asset.device)
-    
+
     # resolve number of bodies
     num_bodies = len(asset_cfg.body_ids) if isinstance(asset_cfg.body_ids, list) else asset.num_bodies
 
@@ -683,13 +684,33 @@ def add_payload_to_base(
     # Compute forces by multiplying the mass with gravity, apply only in z-direction
     forces = masses * gravity  # (num_envs, num_bodies, 3)
 
-    # sample random x, y positions for the payload relative to the base
-    x_positions = math_utils.sample_uniform(*x_position_range, (len(env_ids), num_bodies, 1), asset.device)
-    y_positions = math_utils.sample_uniform(*y_position_range, (len(env_ids), num_bodies, 1), asset.device)
-    
-    # Simulate payload applied on the base surface, using a base height of 0.265 as specified in the urdf under https://github.com/ANYbotics/anymal_d_simple_description
-    z_positions = torch.full((len(env_ids), num_bodies, 1), 0.265 / 2, device=asset.device)
-    
+    # Helper function to sample from a list of tuples
+    def sample_from_ranges(ranges, num_envs, num_bodies, device):
+        # If a single range is provided, sample uniformly across the range
+        if isinstance(ranges, tuple):
+            return math_utils.sample_uniform(*ranges, size=(num_envs, num_bodies, 1), device=device)
+
+        # Convert the list of ranges to a tensor
+        ranges_tensor = torch.tensor(ranges, device=device)
+
+        # Randomly select a range for each environment-body pair
+        selected_ranges = ranges_tensor[torch.randint(0, len(ranges), (num_envs, num_bodies), device=device)]
+
+        # Split the selected ranges into min and max values
+        min_values, max_values = selected_ranges[..., 0], selected_ranges[..., 1]
+
+        # Vectorized sampling using uniform_ across the selected ranges
+        sampled_positions = (
+            min_values + (max_values - min_values) * torch.rand((num_envs, num_bodies), device=device)
+        ).unsqueeze(-1)
+
+        return sampled_positions
+
+    # sample random x, y, z positions for the payload relative to the base using the custom sampling method
+    x_positions = sample_from_ranges(x_position_range, len(env_ids), num_bodies, asset.device)
+    y_positions = sample_from_ranges(y_position_range, len(env_ids), num_bodies, asset.device)
+    z_positions = sample_from_ranges(z_position_range, len(env_ids), num_bodies, asset.device)
+
     # Concatenate x, y, and z to form the position vectors
     positions = torch.cat([x_positions, y_positions, z_positions], dim=-1)
 
@@ -698,7 +719,7 @@ def add_payload_to_base(
 
     # set the forces and torques into the buffers
     asset.set_external_force_and_torque(forces, torques, env_ids=env_ids, body_ids=asset_cfg.body_ids)
-    asset.update_external_force(env_ids, forces, positions)
+    asset.update_external_force(forces, positions, env_ids=env_ids, body_ids=asset_cfg.body_ids)
 
 
 def push_by_setting_velocity(

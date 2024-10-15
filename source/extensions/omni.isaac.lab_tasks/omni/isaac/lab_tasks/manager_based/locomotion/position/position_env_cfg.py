@@ -142,14 +142,20 @@ class EventCfg:
         },
     )
 
-    # add_payload_to_base = EventTerm(
-    #     func=mdp.add_payload_to_base,
+    # add_payload_to_body = EventTerm(
+    #     func=mdp.add_payload_to_body,
     #     mode="reset",
     #     params={
-    #         "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-    #         "mass_range": (15.0, 20.0),
-    #         "x_position_range": (0.0, 0.4),
-    #         "y_position_range": (0.0, 0.08),
+    #         # "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+    #         # "mass_range": (15.0, 20.0),
+    #         # "x_position_range": (0.0, 0.4),
+    #         # "y_position_range": (0.0, 0.08),
+    #         # "z_position_range": (0.1325, 0.1325),
+    #         "asset_cfg": SceneEntityCfg("robot", body_names="torso_link"),
+    #         "mass_range": (40.0, 50.0),
+    #         "x_position_range": (-0.07, 0.07),
+    #         "y_position_range": [(-0.11, -0.08), (0.08, 0.11)],
+    #         "z_position_range": (0.31, 0.31),
     #     },
     # )
 
@@ -177,7 +183,7 @@ class RewardsCfg:
 
     # # -- penalties
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
-    # ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
+    ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
     dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-1.0e-5)
     action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)

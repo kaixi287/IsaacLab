@@ -26,6 +26,8 @@ class AnymalDFlatEnvCfg(AnymalDRoughEnvCfg):
         self.observations.policy.height_scan = None
         # no terrain curriculum
         self.curriculum.terrain_levels = None
+        if getattr(self.events, "add_payload_to_body", None) is not None:
+            self.events.add_payload_to_body.params["z_position_range"] = (0.1325, 0.1325)
 
 
 class AnymalDFlatEnvCfg_PLAY(AnymalDFlatEnvCfg):
@@ -41,3 +43,11 @@ class AnymalDFlatEnvCfg_PLAY(AnymalDFlatEnvCfg):
         # remove random pushing event
         self.events.base_external_force_torque = None
         self.events.push_robot = None
+        if getattr(self.events, "disable_joint", None) is not None:
+            self.scene.robot.debug_vis = True
+            self.scene.robot.in_distribution_joint_ids = [0, 4, 8]
+            self.events.disable_joint.params["prob_no_disable"] = 0.0
+            self.events.disable_joint.params["joint_to_disable"] = -1
+        if getattr(self.events, "add_payload_to_body", None) is not None:
+            self.scene.robot.debug_vis = True
+            self.scene.robot.in_distribution_external_force_positions = [(0.0, 0.4), (0.0, 0.08)]
