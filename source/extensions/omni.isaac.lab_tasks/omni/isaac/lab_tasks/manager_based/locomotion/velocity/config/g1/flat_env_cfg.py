@@ -54,6 +54,9 @@ class G1FlatEnvCfg_PLAY(G1FlatEnvCfg):
         # post init of parent
         super().__post_init__()
 
+        # Set to eval mode
+        self.eval_mode = True
+
         # make a smaller scene for play
         self.scene.num_envs = 50
         self.scene.env_spacing = 2.5
@@ -62,6 +65,7 @@ class G1FlatEnvCfg_PLAY(G1FlatEnvCfg):
         # remove random pushing
         self.events.base_external_force_torque = None
         self.events.push_robot = None
+        #
         if getattr(self.events, "disable_joint", None) is not None:
             self.scene.robot.debug_vis = True
             self.scene.robot.in_distribution_joint_ids = [0, 3, 7]

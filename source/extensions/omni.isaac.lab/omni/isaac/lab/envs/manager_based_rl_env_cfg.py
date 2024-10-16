@@ -54,6 +54,9 @@ class ManagerBasedRLEnvCfg(ManagerBasedEnvCfg):
     then the episode length in steps is 100.
     """
 
+    eval_mode: bool = False
+    """Whether the environment is in evaluation mode."""
+
     # environment settings
     rewards: object = MISSING
     """Reward settings.

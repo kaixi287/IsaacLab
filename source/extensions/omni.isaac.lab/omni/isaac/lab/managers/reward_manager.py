@@ -54,6 +54,7 @@ class RewardManager(ManagerBase):
             self._episode_sums[term_name] = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
         # create buffer for managing reward per environment
         self._reward_buf = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
+        self.eval_mode = env.cfg.eval_mode
 
     def __str__(self) -> str:
         """Returns: A string representation for reward manager."""
@@ -106,7 +107,10 @@ class RewardManager(ManagerBase):
         for key in self._episode_sums.keys():
             # store information
             # r_1 + r_2 + ... + r_n
-            episodic_sum_avg = torch.mean(self._episode_sums[key][env_ids])
+            if self.eval_mode:
+                episodic_sum_avg = torch.sum(self._episode_sums[key][env_ids])
+            else:
+                episodic_sum_avg = torch.mean(self._episode_sums[key][env_ids])
             extras["Episode Reward/" + key] = episodic_sum_avg / self._env.max_episode_length_s
             # reset episodic sum
             self._episode_sums[key][env_ids] = 0.0

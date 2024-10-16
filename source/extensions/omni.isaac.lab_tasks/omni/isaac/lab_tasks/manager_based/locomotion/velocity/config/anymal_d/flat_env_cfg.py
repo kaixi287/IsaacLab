@@ -35,6 +35,9 @@ class AnymalDFlatEnvCfg_PLAY(AnymalDFlatEnvCfg):
         # post init of parent
         super().__post_init__()
 
+        # Set to eval mode
+        self.eval_mode = True
+
         # make a smaller scene for play
         self.scene.num_envs = 50
         self.scene.env_spacing = 2.5

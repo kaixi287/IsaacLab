@@ -53,7 +53,7 @@ from rsl_rl.runners import OnPolicyRunner
 from rsl_rl.utils.wandb_utils import WandbSummaryWriter
 
 import omni.isaac.lab_tasks  # noqa: F401
-from omni.isaac.lab_tasks.utils import get_checkpoint_path, parse_env_cfg
+from omni.isaac.lab_tasks.utils import get_checkpoint_paths, parse_env_cfg
 from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (  # export_policy_as_jit,; export_policy_as_onnx,
     RslRlOnPolicyRunnerCfg,
     RslRlVecEnvWrapper,
@@ -110,7 +110,7 @@ def main():
         log_root_path = os.path.join("logs", "rsl_rl", agent_cfg.experiment_name)
     log_root_path = os.path.abspath(log_root_path)
     print(f"[INFO] Loading experiment from directory: {log_root_path}")
-    resume_paths = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
+    resume_paths = get_checkpoint_paths(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
 
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode=None)
