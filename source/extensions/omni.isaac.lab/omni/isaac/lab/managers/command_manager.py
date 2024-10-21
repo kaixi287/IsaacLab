@@ -51,6 +51,7 @@ class CommandTerm(ManagerTermBase):
         self.metrics = dict()
         # -- time left before resampling
         self.time_left = torch.zeros(self.num_envs, device=self.device)
+        self.time_elapsed = torch.zeros(self.num_envs, device=self.device)
         # -- counter for the number of times the command has been resampled within the current episode
         self.command_counter = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
 
@@ -155,6 +156,7 @@ class CommandTerm(ManagerTermBase):
         self._update_metrics()
         # reduce the time left before resampling
         self.time_left -= dt
+        self.time_elapsed += dt
         # resample the command if necessary
         resample_env_ids = (self.time_left <= 0.0).nonzero().flatten()
         if len(resample_env_ids) > 0:
@@ -177,6 +179,7 @@ class CommandTerm(ManagerTermBase):
         """
         # resample the time left before resampling
         if len(env_ids) != 0:
+            self.time_elapsed[env_ids] = 0.0
             self.time_left[env_ids] = self.time_left[env_ids].uniform_(*self.cfg.resampling_time_range)
             # increment the command counter
             self.command_counter[env_ids] += 1
@@ -365,13 +368,20 @@ class CommandManager(ManagerBase):
             The command term with the specified name.
         """
         return self._terms[name]
-    
+
     def time_left(self, name: str) -> torch.Tensor:
-            """Compute the time left for the specified command term."""
-            if name in self._terms:
-                return self._terms[name].time_left
-            else:
-                raise ValueError(f"Command term '{name}' not found in the command manager.")
+        """Compute the time left for the specified command term."""
+        if name in self._terms:
+            return self._terms[name].time_left
+        else:
+            raise ValueError(f"Command term '{name}' not found in the command manager.")
+
+    def time_elapsed(self, name: str) -> torch.Tensor:
+        """Compute the time left for the specified command term."""
+        if name in self._terms:
+            return self._terms[name].time_elapsed
+        else:
+            raise ValueError(f"Command term '{name}' not found in the command manager.")
 
     """
     Helper functions.

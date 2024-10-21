@@ -8,14 +8,12 @@ from __future__ import annotations
 import torch
 from typing import TYPE_CHECKING
 
-
+import omni.isaac.lab.utils.math as math_utils
 from omni.isaac.lab.assets import Articulation, RigidObject
 from omni.isaac.lab.managers import SceneEntityCfg
-from omni.isaac.lab.managers.manager_base import ManagerTermBase
-from omni.isaac.lab.managers.manager_term_cfg import RewardTermCfg
+from omni.isaac.lab.managers.manager_base import ManagerTermBase  # noqa: F401
+from omni.isaac.lab.managers.manager_term_cfg import RewardTermCfg  # noqa: F401
 from omni.isaac.lab.sensors import ContactSensor
-import omni.isaac.lab.utils.math as math_utils
-
 
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedRLEnv
@@ -27,40 +25,72 @@ def _command_duration_mask(env: ManagerBasedRLEnv, duration: float, command_name
     mask = command.time_left <= duration
     return mask / duration
 
-def tracking_pos(env: ManagerBasedRLEnv, duration: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
+
+def _initial_command_duration_mask(env: ManagerBasedRLEnv, duration: float, command_name: str):
+    command: CommandTerm = env.command_manager.get_term(command_name)
+    mask = command.time_elapsed <= duration
+    return mask / duration
+
+
+def tracking_pos(
+    env: ManagerBasedRLEnv, duration: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+):
     command = env.command_manager.get_term(command_name)
-    
+
     asset: RigidObject = env.scene[asset_cfg.name]
     distance = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1)
 
-    return (1. /(1. + torch.square(distance))) * _command_duration_mask(env, duration, command_name)
+    return (1.0 / (1.0 + torch.square(distance))) * _command_duration_mask(env, duration, command_name)
 
 
-def tracking_pos2(env: ManagerBasedRLEnv, duration: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+def tracking_pos2(
+    env: ManagerBasedRLEnv, duration: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
     """Reward for reaching the target location."""
     command = env.command_manager.get_term(command_name)
-    
+
     asset: RigidObject = env.scene[asset_cfg.name]
     distance = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1)
-    return (1 - 0.5*distance)* _command_duration_mask(env, duration, command_name)
+    return (1 - 0.5 * distance) * _command_duration_mask(env, duration, command_name)
 
 
-def tracking_heading(env: ManagerBasedRLEnv, duration: float, command_name: str,  max_pos_distance: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
+def tracking_heading(
+    env: ManagerBasedRLEnv,
+    duration: float,
+    command_name: str,
+    max_pos_distance: float,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+):
     command = env.command_manager.get_term(command_name)
     asset: RigidObject = env.scene[asset_cfg.name]
-    
+
     distance = torch.abs(math_utils.wrap_to_pi(command.heading_command_w - asset.data.heading_w))
     position_distance = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1)
-    return (1. /(1. + torch.square(distance))) * (position_distance < max_pos_distance) * _command_duration_mask(env, duration, command_name)
+    return (
+        (1.0 / (1.0 + torch.square(distance)))
+        * (position_distance < max_pos_distance)
+        * _command_duration_mask(env, duration, command_name)
+    )
 
 
-def tracking_heading2(env: ManagerBasedRLEnv, duration: float, command_name: str, max_pos_distance: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+def tracking_heading2(
+    env: ManagerBasedRLEnv,
+    duration: float,
+    command_name: str,
+    max_pos_distance: float,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
     command = env.command_manager.get_term(command_name)
     asset: RigidObject = env.scene[asset_cfg.name]
-    
+
     distance = torch.abs(math_utils.wrap_to_pi(command.heading_command_w - asset.data.heading_w))
     position_distance = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1)
-    return (1 - 0.5*distance)* (position_distance < max_pos_distance) * _command_duration_mask(env, duration, command_name)
+    return (
+        (1 - 0.5 * distance)
+        * (position_distance < max_pos_distance)
+        * _command_duration_mask(env, duration, command_name)
+    )
+
 
 """
 Root penalties.
@@ -90,6 +120,7 @@ def flat_orientation_l2(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = Scen
     asset: RigidObject = env.scene[asset_cfg.name]
     return torch.sum(torch.square(asset.data.projected_gravity_b[:, :2]), dim=1)
 
+
 def base_acc(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot", body_names="base")):
     """Penalize high base accelerations.
 
@@ -100,10 +131,12 @@ def base_acc(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg(
     # Compute linear acceleration
     linear_acc_sum = torch.sum(torch.square(asset.data.body_acc_w[:, asset_cfg.body_ids, :3]), dim=-1).squeeze(1)
     # Compute angular acceleration
-    angular_acc_sum = 0.02 * torch.sum(torch.square(asset.data.body_acc_w[:, asset_cfg.body_ids, 3:]), dim=-1).squeeze(1)
+    angular_acc_sum = 0.02 * torch.sum(torch.square(asset.data.body_acc_w[:, asset_cfg.body_ids, 3:]), dim=-1).squeeze(
+        1
+    )
 
     return linear_acc_sum + angular_acc_sum
-    
+
 
 """
 Joint penalties.
@@ -128,6 +161,7 @@ def joint_acc_l2(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntity
     # extract the used quantities (to enable type-hinting)
     asset: Articulation = env.scene[asset_cfg.name]
     return torch.sum(torch.square(asset.data.joint_acc[:, asset_cfg.joint_ids]), dim=1)
+
 
 def joint_vel_l2(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """Penalize joint velocities on the articulation using L2 squared kernel.
@@ -155,19 +189,30 @@ def joint_pos_limits(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEn
     ).clip(min=0.0)
     return torch.sum(out_of_limits, dim=1)
 
+
 """
 Feet penalties.
 """
-def feet_acc(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot", body_names=[".*_FOOT"])) -> torch.Tensor:
+
+
+def feet_acc(
+    env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot", body_names=[".*_FOOT"])
+) -> torch.Tensor:
     asset: Articulation = env.scene[asset_cfg.name]
     return torch.sum(torch.norm(asset.data.body_acc_w[:, asset_cfg.body_ids], dim=-1), dim=1)
 
-def feet_balance(env: ManagerBasedRLEnv, duration: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot", body_names=[".*_FOOT"])) -> torch.Tensor:
+
+def feet_balance(
+    env: ManagerBasedRLEnv,
+    duration: float,
+    command_name: str,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot", body_names=[".*_FOOT"]),
+) -> torch.Tensor:
     """
     Penalize foot positions that are unbalanced with respect to the base center if the robot should stand still.
     """
     asset: Articulation = env.scene[asset_cfg.name]
-    
+
     root_position = asset.data.root_pos_w
     foot_positions = asset.data.body_pos_w[:, asset_cfg.body_ids]  # Extract only the positions (first 3 values)
 
@@ -176,12 +221,13 @@ def feet_balance(env: ManagerBasedRLEnv, duration: float, command_name: str, ass
 
     # Calculate the imbalance as the variance in these distances (higher variance indicates more imbalance)
     imbalance = torch.var(distances_from_center, dim=1)
-    
+
     command = env.command_manager.get_term(command_name)
     should_stand = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1) <= 0.1
     # if command.cfg.include_heading:
     #     should_stand &= torch.abs(command.heading_command_w - asset.data.heading_w) < 0.5
     return imbalance * should_stand * _command_duration_mask(env, duration, command_name)
+
 
 def feet_slide(env, sensor_cfg: SceneEntityCfg, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     # Penalize feet sliding
@@ -191,6 +237,7 @@ def feet_slide(env, sensor_cfg: SceneEntityCfg, asset_cfg: SceneEntityCfg = Scen
     body_vel = asset.data.body_lin_vel_w[:, asset_cfg.body_ids, :2]
     reward = torch.sum(body_vel.norm(dim=-1) * contacts, dim=1)
     return reward
+
 
 def feet_air_time_positive_biped(env, command_name: str, threshold: float, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
     """Reward long steps taken by the feet for bipeds.
@@ -212,6 +259,7 @@ def feet_air_time_positive_biped(env, command_name: str, threshold: float, senso
     # no reward for zero command
     reward *= torch.norm(env.command_manager.get_command(command_name)[:, :2], dim=1) > 0.1
     return reward
+
 
 """
 Action penalties.
@@ -235,6 +283,7 @@ def applied_torque_limits(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = Sc
         asset.data.applied_torque[:, asset_cfg.joint_ids] - asset.data.computed_torque[:, asset_cfg.joint_ids]
     )
     return torch.sum(out_of_limits, dim=1)
+
 
 def action_rate_l2(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Penalize the rate of change of the actions using L2-kernel."""
@@ -297,54 +346,92 @@ def collision(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg) -> torch.Tenso
     collision_force = torch.max(torch.norm(net_contact_forces[:, :, sensor_cfg.body_ids], dim=-1), dim=1)[0]
     # Apply conditional clipping
     collision_force = torch.where(collision_force > 1.0, collision_force.clip(min=200.0), collision_force)
-    
+
     return torch.sum(collision_force, dim=(1)) / 200.0
 
+
 # -- exploration reward
-def move_in_direction(env: ManagerBasedRLEnv, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"), epsilon: float = 1e-8) -> torch.Tensor:
+def move_in_direction(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    duration: float = 3.0,
+    distance_threshold: float = 0.25,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    epsilon: float = 1e-8,
+) -> torch.Tensor:
     """Encourage exploration towards the target."""
     command = env.command_manager.get_command(command_name)
     des_pos_b = command[:, :2]
     vel_target = des_pos_b / (torch.norm(des_pos_b, dim=1).unsqueeze(1) + epsilon)
-    
+
     asset: RigidObject = env.scene[asset_cfg.name]
     x_dot_b = asset.data.root_lin_vel_b[:, :2]
     vel = x_dot_b / (torch.norm(x_dot_b, dim=1).unsqueeze(1) + epsilon)
-    
+
+    # should_move = torch.norm(des_pos_b - asset.data.root_pos_w[:, :2], dim=1) > distance_threshold
+
+    # return (vel[:, 0] * vel_target[:, 0] + vel[:, 1] * vel_target[:, 1]) * should_move * _initial_command_duration_mask(env, duration, command_name)
     return vel[:, 0] * vel_target[:, 0] + vel[:, 1] * vel_target[:, 1]
-    
+
 
 # -- stalling penalty
-def dont_wait(env: ManagerBasedRLEnv, min_vel: str, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+def dont_wait(
+    env: ManagerBasedRLEnv, min_vel: str, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
     """Penalize stalling."""
     command = env.command_manager.get_term(command_name)
-    
+
     asset: RigidObject = env.scene[asset_cfg.name]
     far_away = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1) > 0.25
     waiting = torch.norm(asset.data.root_lin_vel_w[:, :2], dim=1) < min_vel
 
     return far_away * waiting
 
-def stand_still_pose(env: ManagerBasedRLEnv, duration: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
-    command = env.command_manager.get_term(command_name)
-    
-    asset: Articulation = env.scene[asset_cfg.name]
-    should_stand = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1) <= 0.1
-    # if command.cfg.include_heading:
-    #     should_stand &= torch.abs(command.heading_command_w - asset.data.heading_w) < 0.5
-    return torch.sum(torch.square(asset.data.joint_pos - asset.data.default_joint_pos), dim=1) * should_stand * _command_duration_mask(env, duration, command_name)
 
-def stand_still(env: ManagerBasedRLEnv, duration: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")):
+def stand_still_pose(
+    env: ManagerBasedRLEnv,
+    duration: float,
+    command_name: str,
+    distance_threshold: float = 0.1,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+):
     command = env.command_manager.get_term(command_name)
-    
+
     asset: Articulation = env.scene[asset_cfg.name]
-    should_stand = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1) <= 0.1
+    should_stand = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1) <= distance_threshold
     # if command.cfg.include_heading:
     #     should_stand &= torch.abs(command.heading_command_w - asset.data.heading_w) < 0.5
-    return torch.sum(torch.square(asset.data.joint_vel[:, asset_cfg.joint_ids]), dim=1) * should_stand * _command_duration_mask(env, duration, command_name)
+    return (
+        torch.sum(torch.square(asset.data.joint_pos - asset.data.default_joint_pos), dim=1)
+        * should_stand
+        * _command_duration_mask(env, duration, command_name)
+    )
+
+
+def stand_still(
+    env: ManagerBasedRLEnv,
+    duration: float,
+    command_name: str,
+    distance_threshold: float = 0.1,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+):
+    command = env.command_manager.get_term(command_name)
+
+    asset: Articulation = env.scene[asset_cfg.name]
+    should_stand = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1) <= distance_threshold
+    # if command.cfg.include_heading:
+    #     should_stand &= torch.abs(command.heading_command_w - asset.data.heading_w) < 0.5
+    return (
+        torch.sum(torch.square(asset.data.joint_vel[:, asset_cfg.joint_ids]), dim=1)
+        * should_stand
+        * _command_duration_mask(env, duration, command_name)
+    )
+
 
 # -- time efficiency reward
-def time_efficiency_reward(env: ManagerBasedRLEnv, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+def time_efficiency_reward(
+    env: ManagerBasedRLEnv, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
     """
     Reward for reaching the target quickly.
     """
@@ -352,5 +439,5 @@ def time_efficiency_reward(env: ManagerBasedRLEnv, command_name: str, asset_cfg:
     asset: Articulation = env.scene[asset_cfg.name]
     # Calculate the distance to the target
     position_reached = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1) <= 0.1
-    
+
     return command.time_left / env.max_episode_length_s * position_reached
