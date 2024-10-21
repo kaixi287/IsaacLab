@@ -22,11 +22,6 @@ from omni.isaac.lab_assets import G1_MINIMAL_CFG  # isort: skip
 
 @configclass
 class G1Rewards(RewardsCfg):
-    tracking_pos = RewTerm(
-        func=mdp.tracking_pos2,
-        weight=10.0,
-        params={"duration": 3.0, "command_name": "pose_command"},
-    )
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_positive_biped,
         weight=0.75,
@@ -114,6 +109,13 @@ class G1Rewards(RewardsCfg):
         weight=-0.1,
         params={"asset_cfg": SceneEntityCfg("robot", joint_names="torso_joint")},
     )
+    feet_acc = RewTerm(
+        func=mdp.feet_acc, weight=-0.002, params={"asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link")}
+    )
+
+    # stand_still = RewTerm(
+    #     func=mdp.stand_still, weight=-0.5, params={"duration": 4.0, "distance_threshold": 0.25, "command_name": "pose_command"}
+    # )
 
 
 ##
@@ -170,7 +172,9 @@ class G1PosTrackingFlatEnvCfg(PosTrackingEnvCfg):
             "robot", joint_names=[".*_hip_.*", ".*_knee_joint", ".*_ankle_.*"]
         )
         self.rewards.dont_wait = None
-        self.rewards.stand_still = None
+        self.rewards.stand_still.params["duration"] = 3.0
+        self.rewards.stand_still.params["distance_threshold"] = 0.1
+        self.rewards.stand_still.weight = -0.2
 
 
 class G1PosTrackingFlatEnvCfg_PLAY(G1PosTrackingFlatEnvCfg):

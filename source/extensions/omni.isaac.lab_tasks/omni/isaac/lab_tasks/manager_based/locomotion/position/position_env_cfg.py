@@ -192,7 +192,7 @@ class RewardsCfg:
     flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=-1.0)
 
     # Task related rewards
-    dont_wait = RewTerm(func=mdp.dont_wait, weight=-1.0, params={"min_vel": 0.2, "command_name": "pose_command"})
+    # dont_wait = RewTerm(func=mdp.dont_wait, weight=-1.0, params={"min_vel": 0.2, "command_name": "pose_command"})
     move_in_direction = RewTerm(func=mdp.move_in_direction, weight=1.0, params={"command_name": "pose_command"})
     stand_still = RewTerm(
         func=mdp.stand_still_pose, weight=-0.05, params={"duration": 1.0, "command_name": "pose_command"}
@@ -216,7 +216,7 @@ class CurriculumCfg:
 
     pass
     # remove_move_in_direction_reward = CurrTerm(
-    #     func=mdp.modify_reward_weight_on_threshold, params={"term_name": "move_in_direction", "weight": 0.0, "ref_term_name": "tracking_pos", "threshold": 0.5}
+    #     func=mdp.modify_reward_weight_on_threshold, params={"term_name": "move_in_direction", "weight": 0.0, "ref_term_name": "tracking_pos", "threshold": 0.8}
     # )
 
 

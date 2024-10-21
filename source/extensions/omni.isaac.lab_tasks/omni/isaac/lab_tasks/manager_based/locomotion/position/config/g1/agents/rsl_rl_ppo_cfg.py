@@ -15,7 +15,7 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
 @configclass
 class G1PosTrackingEnvPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
-    max_iterations = 8000
+    max_iterations = 5000
     save_interval = 500
     experiment_name = "g1_pos_tracking"
     empirical_normalization = False
@@ -44,6 +44,6 @@ class G1PosTrackingEnvPPORunnerCfg(RslRlOnPolicyRunnerCfg):
             use_mirror_loss=False,  # this adds symmetry loss term to the loss function
             # data_augmentation_func="omni.isaac.lab_tasks.manager_based.locomotion.position.config.g1.symmetry:get_symmetric_states",  # specify the data augmentation function if any
             data_augmentation_func=None,  # specify the data augmentation function if any
-            mirror_loss_coeff=0.0  # coefficient for symmetry loss term
-        )
+            mirror_loss_coeff=0.0,  # coefficient for symmetry loss term
+        ),
     )
