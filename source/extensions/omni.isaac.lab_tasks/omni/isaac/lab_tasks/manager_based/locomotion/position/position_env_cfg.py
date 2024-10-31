@@ -164,7 +164,7 @@ class EventCfg:
     #     mode="reset",
     #     params={
     #         "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-    #         "joint_to_disable": [0, 4, 8], # Index of joint to disable
+    #         "joint_to_disable": [0, 3, 7, 1, 4, 8], # Index of joint to disable
     #         "prob_no_disable": 0.2,
     #     },
     # )
@@ -185,7 +185,7 @@ class RewardsCfg:
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
     ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
     dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-1.0e-5)
-    action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
+    # action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)
 
     # # -- optional penalties

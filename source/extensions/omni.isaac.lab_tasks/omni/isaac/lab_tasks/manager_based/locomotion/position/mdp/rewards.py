@@ -290,6 +290,32 @@ def action_rate_l2(env: ManagerBasedRLEnv) -> torch.Tensor:
     return torch.sum(torch.square(env.action_manager.action - env.action_manager.prev_action), dim=1)
 
 
+def action_rate_huber(env: ManagerBasedRLEnv, delta: float = 0.5) -> torch.Tensor:
+    """
+    Penalize the rate of change of the actions using Huber loss.
+
+    Args:
+    - env: The environment object containing action data.
+    - delta: The Huber loss threshold. Default is 1.0.
+
+    Returns:
+    - Huber loss penalty for the action rate.
+    """
+    # Calculate the difference between the current and previous actions
+    action_diff = env.action_manager.action - env.action_manager.prev_action
+    abs_action_diff = torch.abs(action_diff)
+
+    # Apply Huber loss conditionally based on delta threshold
+    quadratic_term = 0.5 * torch.square(action_diff)  # Quadratic penalty for small changes
+    linear_term = delta * (abs_action_diff - 0.3 * delta)  # Linear penalty for larger changes
+
+    # Use torch.where to apply quadratic penalty where |diff| <= delta, else linear penalty
+    huber_loss = torch.where(abs_action_diff <= delta, quadratic_term, linear_term)
+
+    # Sum over all dimensions to get the total action rate penalty
+    return torch.sum(huber_loss, dim=1)
+
+
 def action_l2(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Penalize the actions using L2-kernel."""
     return torch.sum(torch.square(env.action_manager.action), dim=1)
@@ -354,7 +380,6 @@ def collision(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg) -> torch.Tenso
 def move_in_direction(
     env: ManagerBasedRLEnv,
     command_name: str,
-    duration: float = 3.0,
     distance_threshold: float = 0.25,
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
     epsilon: float = 1e-8,
@@ -368,10 +393,15 @@ def move_in_direction(
     x_dot_b = asset.data.root_lin_vel_b[:, :2]
     vel = x_dot_b / (torch.norm(x_dot_b, dim=1).unsqueeze(1) + epsilon)
 
-    # should_move = torch.norm(des_pos_b - asset.data.root_pos_w[:, :2], dim=1) > distance_threshold
+    goal_reached = torch.norm(des_pos_b - asset.data.root_pos_w[:, :2], dim=1) <= distance_threshold
 
     # return (vel[:, 0] * vel_target[:, 0] + vel[:, 1] * vel_target[:, 1]) * should_move * _initial_command_duration_mask(env, duration, command_name)
-    return vel[:, 0] * vel_target[:, 0] + vel[:, 1] * vel_target[:, 1]
+    # Compute cosine similarity and scale to range [0, 1]
+    cosine_similarity = (vel[:, 0] * vel_target[:, 0] + vel[:, 1] * vel_target[:, 1] + 1) / 2
+    # Use torch.where to set reward to 1 if reached_goal is true, otherwise use cosine_similarity
+    reward = torch.where(goal_reached, torch.ones_like(cosine_similarity), cosine_similarity)
+
+    return reward
 
 
 # -- stalling penalty
@@ -408,7 +438,28 @@ def stand_still_pose(
     )
 
 
-def stand_still(
+def stand_still_pose_reward(
+    env: ManagerBasedRLEnv,
+    duration: float,
+    command_name: str,
+    distance_threshold: float = 0.1,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+):
+    command = env.command_manager.get_term(command_name)
+
+    asset: Articulation = env.scene[asset_cfg.name]
+    should_stand = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1) <= distance_threshold
+
+    # Calculate deviation from default joint positions
+    joint_deviation = torch.sum(torch.square(asset.data.joint_pos - asset.data.default_joint_pos), dim=1)
+
+    # Invert deviation to create a reward, rewarding closer joint positions
+    reward = torch.exp(-joint_deviation)  # The closer to default, the higher the reward
+
+    return reward * should_stand * _command_duration_mask(env, duration, command_name)
+
+
+def stand_still_vel(
     env: ManagerBasedRLEnv,
     duration: float,
     command_name: str,
@@ -423,6 +474,27 @@ def stand_still(
     #     should_stand &= torch.abs(command.heading_command_w - asset.data.heading_w) < 0.5
     return (
         torch.sum(torch.square(asset.data.joint_vel[:, asset_cfg.joint_ids]), dim=1)
+        * should_stand
+        * _command_duration_mask(env, duration, command_name)
+    )
+
+
+def ang_vel_stand_still(
+    env: ManagerBasedRLEnv,
+    duration: float,
+    command_name: str,
+    distance_threshold: float = 0.1,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    """Penalize xy-axis base angular velocity using L2-kernel."""
+    # extract the used quantities (to enable type-hinting)
+    command = env.command_manager.get_term(command_name)
+
+    asset: Articulation = env.scene[asset_cfg.name]
+    should_stand = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1) <= distance_threshold
+
+    return (
+        torch.square(asset.data.root_ang_vel_b[:, 2])
         * should_stand
         * _command_duration_mask(env, duration, command_name)
     )
