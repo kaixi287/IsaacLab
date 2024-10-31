@@ -203,22 +203,57 @@ class Articulation(AssetBase):
         return self._body_physx_view
 
     """
+    Helper functions
+    """
+
+    def initialize_actuator_control_map(self, device):
+        """Precompute which joints each actuator can control for faster lookups."""
+        self.actuator_control_map = {}
+        self.actuator_index_map = {}
+        for actuator_name, actuator in self.actuators.items():
+            # resolve jiont indices
+            if actuator.joint_indices == slice(None):
+                actuator_joint_indices = torch.arange(actuator.num_joints, device=device)
+            elif isinstance(actuator.joint_indices, Sequence):
+                actuator_joint_indices = torch.tensor(actuator.joint_indices, device=device)
+            else:
+                actuator_joint_indices = actuator.joint_indices.clone().detach().to(device)
+
+            self.actuator_control_map[actuator_name] = actuator_joint_indices
+            # Create a tensor for fast index lookup
+            max_joint_index = actuator_joint_indices[-1].item() + 1
+            actuator_specific_indices = torch.full((max_joint_index,), -1, dtype=torch.long, device=device)
+            actuator_specific_indices[actuator_joint_indices] = torch.arange(actuator.num_joints, device=device)
+            self.actuator_index_map[actuator_name] = actuator_specific_indices
+
+    """
     Visualization
     """
 
     def update_disabled_joints(self, env_ids: torch.Tensor, joint_to_disable: torch.Tensor):
-        """Update the joints to disable for specific environments.
+        """Update the joints to disable for specific environments and refresh the lookup table.
 
         Args:
             env_ids (torch.Tensor): Tensor of environment indices, expected shape (num_envs,).
             joint_to_disable (torch.Tensor): Tensor of joint IDs to disable for env_ids, expected shape (num_envs, num_joints_to_disable).
         """
+        # Initialize `all_disabled_joints` if it doesn't exist
         if not hasattr(self, "all_disabled_joints"):
-            # Initialize all_disabled_joints tensor if it doesn't exist
             self.all_disabled_joints = torch.full((len(env_ids),), -1, dtype=torch.int, device=joint_to_disable.device)
+            self.initialize_actuator_control_map(device=joint_to_disable.device)
+            # initialize the lookup table for each actuator
+            self.disabled_joint_lookup = {}
+            for actuator_name in self.actuators.keys():
+                self.disabled_joint_lookup[actuator_name] = torch.zeros_like(self.all_disabled_joints, dtype=torch.bool)
 
-        # Update the joint IDs for the specified environments
+        # Update `all_disabled_joints` for the specified environments
         self.all_disabled_joints[env_ids] = joint_to_disable
+
+        # Refresh lookup table for only the updated `env_ids`
+        for actuator_name, actuator_joint_indices in self.actuator_control_map.items():
+            # Get the joint indices in `joint_to_disable` that match `actuator_joint_indices`
+            is_disabled_joint_controlled = torch.isin(joint_to_disable, actuator_joint_indices)
+            self.disabled_joint_lookup[actuator_name][env_ids] = is_disabled_joint_controlled
 
     def update_external_force(
         self, forces: torch.Tensor, positions: torch.Tensor, env_ids: torch.Tensor, body_ids: Sequence[int]
@@ -356,7 +391,8 @@ class Articulation(AssetBase):
                     self.green_joint_marker.set_visibility(True)
                 else:
                     # Set visibility to false if no out-of-distribution joints are found
-                    self.green_joint_marker.set_visibility(False)
+                    if hasattr(self, "green_joint_marker"):
+                        self.green_joint_marker.set_visibility(False)
 
         else:
             if hasattr(self, "green_joint_marker"):
@@ -1518,7 +1554,7 @@ class Articulation(AssetBase):
         the actuator models compute the joint level simulation commands and sets them into the PhysX buffers.
         """
         # process actions per group
-        for actuator in self.actuators.values():
+        for actuator_name, actuator in self.actuators.items():
             # prepare input for actuator model based on cached data
             # TODO : A tensor dict would be nice to do the indexing of all tensors together
             control_action = ArticulationActions(
@@ -1535,32 +1571,30 @@ class Articulation(AssetBase):
                     (self.all_disabled_joints.shape[0],), -1, dtype=torch.long, device=self.all_disabled_joints.device
                 )
 
-                #  Get the joint indices of the actuator
-                if actuator.joint_indices == slice(None):
-                    actuator_joint_indices = torch.arange(actuator.num_joints, device=self.all_disabled_joints.device)
-                else:
-                    actuator_joint_indices = actuator.joint_indices
+                # Retrieve precomputed disabled joint control mask for the actuator
+                is_disabled_joint_controlled = self.disabled_joint_lookup[actuator_name]
+                if is_disabled_joint_controlled.any():
+                    controlled_disabled_joints = self.all_disabled_joints[is_disabled_joint_controlled]
 
-                # Check if the joints to disable are controlled by this actuator
-                is_disabled_joint_controlled = torch.isin(self.all_disabled_joints, actuator_joint_indices)
+                    # Directly map `is_disabled_joint_controlled` to joint IDs using the precomputed control map
+                    actuator_specific_indices = self.actuator_index_map[actuator_name][controlled_disabled_joints]
+                    disabled_joint_ids[is_disabled_joint_controlled] = actuator_specific_indices
 
-                # For each joint in joints_to_disable, find its index in actuator joint indices
-                joints_to_disable = torch.where(
-                    actuator_joint_indices.unsqueeze(1) == self.all_disabled_joints[is_disabled_joint_controlled]
-                )[0]
-
-                # Set the relevant disabled joint ids
-                disabled_joint_ids[is_disabled_joint_controlled] = joints_to_disable
-
-                if isinstance(actuator, ImplicitActuator):
-                    envs_to_disable = torch.nonzero(is_disabled_joint_controlled).squeeze()
-                    # the gains and limits are set into the simulation since actuator model is implicit
-                    self.write_joint_stiffness_to_sim(
-                        0.0, joint_ids=joints_to_disable, env_ids=envs_to_disable, allow_double_indexing=False
-                    )
-                    self.write_joint_damping_to_sim(
-                        0.0, joint_ids=joints_to_disable, env_ids=envs_to_disable, allow_double_indexing=False
-                    )
+                    if isinstance(actuator, ImplicitActuator):
+                        envs_to_disable = torch.nonzero(is_disabled_joint_controlled).squeeze()
+                        # the gains and limits are set into the simulation since actuator model is implicit
+                        self.write_joint_stiffness_to_sim(
+                            0.0,
+                            joint_ids=actuator_specific_indices,
+                            env_ids=envs_to_disable,
+                            allow_double_indexing=False,
+                        )
+                        self.write_joint_damping_to_sim(
+                            0.0,
+                            joint_ids=actuator_specific_indices,
+                            env_ids=envs_to_disable,
+                            allow_double_indexing=False,
+                        )
 
             # Compute joint command from the actuator model
             control_action = actuator.compute(
