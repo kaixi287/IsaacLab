@@ -22,25 +22,25 @@ from omni.isaac.lab_assets import G1_MINIMAL_CFG  # isort: skip
 
 @configclass
 class G1Rewards(RewardsCfg):
-    action_rate_huber = RewTerm(func=mdp.action_rate_huber, weight=-1.0e-3, params={"delta": 0.5})
-    # action_l2 = RewTerm(func=mdp.action_l2, weight=-0.001)
-    # feet_air_time = RewTerm(
-    #     func=mdp.feet_air_time_positive_biped,
-    #     weight=0.75,
-    #     params={
-    #         "command_name": "pose_command",
-    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
-    #         "threshold": 0.4,
-    #     },
-    # )
-    # feet_slide = RewTerm(
-    #     func=mdp.feet_slide,
-    #     weight=-0.1,
-    #     params={
-    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
-    #         "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
-    #     },
-    # )
+    # action_rate_huber = RewTerm(func=mdp.action_rate_huber, weight=-1.0e-4, params={"delta": 0.5})
+    # action_l2 = RewTerm(func=mdp.action_l2, weight=-1.0e-4)
+    feet_air_time = RewTerm(
+        func=mdp.feet_air_time_positive_biped,
+        weight=0.75,
+        params={
+            "command_name": "pose_command",
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
+            "threshold": 0.4,
+        },
+    )
+    feet_slide = RewTerm(
+        func=mdp.feet_slide,
+        weight=-0.1,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
+        },
+    )
     # Penalize knee and hip joint accelerations
     dof_acc_l2 = RewTerm(
         func=mdp.joint_acc_l2,
@@ -50,10 +50,10 @@ class G1Rewards(RewardsCfg):
     # base_acc = RewTerm(
     #     func=mdp.base_acc, weight=-0.001, params={"asset_cfg": SceneEntityCfg("robot", body_names=["torso_link"])}
     # )
-    # applied_torque_limits = RewTerm(func=mdp.applied_torque_limits, weight=-0.2)
+    # applied_torque_limits = RewTerm(func=mdp.applied_torque_limits, weight=-0.05)
     # dof_vel_l2 = RewTerm(
     #     func=mdp.joint_vel_l2,
-    #     weight=-0.001,
+    #     weight=-0.0005,
     #     params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_.*", ".*_knee_joint"]
     #     )})
     # dof_vel_limits = RewTerm(
@@ -61,15 +61,15 @@ class G1Rewards(RewardsCfg):
     #     weight=-1.0,
     #     params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_ankle_pitch_joint", ".*_ankle_roll_joint"]), "soft_ratio": 0.9})
     # Penalize ankle joint limits
-    # dof_pos_limits = RewTerm(
-    #     func=mdp.joint_pos_limits,
-    #     weight=-0.5,
-    #     params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_ankle_pitch_joint", ".*_ankle_roll_joint"])},
-    # )
+    dof_pos_limits = RewTerm(
+        func=mdp.joint_pos_limits,
+        weight=-1.0,
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_ankle_pitch_joint", ".*_ankle_roll_joint"])},
+    )
     # Penalize deviation from default of the joints that are not essential for locomotion
     joint_deviation_hip = RewTerm(
         func=mdp.joint_deviation_l1,
-        weight=-0.1,
+        weight=-0.01,
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_yaw_joint", ".*_hip_roll_joint"])},
     )
     joint_deviation_arms = RewTerm(
@@ -118,11 +118,11 @@ class G1Rewards(RewardsCfg):
     # dont_move = RewTerm(
     #     func=mdp.stand_still, weight=-0.05, params={"duration": 1.0, "distance_threshold": 0.1, "command_name": "pose_command"}
     # )
-    stand_still = RewTerm(
-        func=mdp.stand_still_pose_reward,
-        weight=70.0,
-        params={"duration": 3.0, "distance_threshold": 0.05, "command_name": "pose_command"},
-    )
+    # stand_still = RewTerm(
+    #     func=mdp.stand_still_pose_reward,
+    #     weight=50.0,
+    #     params={"duration": 3.0, "distance_threshold": 0.05, "command_name": "pose_command"},
+    # )
     # ang_vel_stand_still = RewTerm(mdp.ang_vel_stand_still, weight=-0.1, params={"duration": 3.0, "distance_threshold": 0.01, "command_name": "pose_command"})
 
 
@@ -173,20 +173,20 @@ class G1PosTrackingFlatEnvCfg(PosTrackingEnvCfg):
         }
 
         # Rewards
-        self.rewards.lin_vel_z_l2.weight = -0.1
-        self.rewards.ang_vel_xy_l2.weight = -0.01
-        # self.rewards.action_rate_l2.weight = -1.0e-4
+        self.rewards.lin_vel_z_l2.weight = -0.2
+        self.rewards.ang_vel_xy_l2.weight = -0.005
+        self.rewards.action_rate_l2.weight = -0.005
         self.rewards.flat_orientation_l2.weight = -1.0
-        self.rewards.dof_torques_l2.weight = -1.0e-6
+        self.rewards.dof_torques_l2.weight = -2.0e-6
         self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
             "robot", joint_names=[".*_hip_.*", ".*_knee_joint", ".*_ankle_.*"]
         )
         # self.rewards.dont_wait = None
         # self.rewards.stand_still.params["duration"] = 3.0
-        # self.rewards.stand_still.params["distance_threshold"] = 0.1
-        # self.rewards.stand_still.weight = -0.2
-        self.rewards.move_in_direction.weight = 0.5
-        self.rewards.move_in_direction.params["distance_threshold"] = 0.05
+        # self.rewards.stand_still.params["distance_threshold"] = 0.01
+        # self.rewards.stand_still.weight = -0.05
+        # self.rewards.move_in_direction.weight = 1.5
+        self.rewards.move_in_direction.params["distance_threshold"] = 1.0e-5
         # self.rewards.tracking_pos.weight = 15.0
 
 
@@ -199,6 +199,8 @@ class G1PosTrackingFlatEnvCfg_PLAY(G1PosTrackingFlatEnvCfg):
         self.eval_mode = True
         if getattr(self.events, "disable_joint", None) is not None:
             self.scene.robot.debug_vis = True
+            self.events.disable_joint.params["prob_no_disable"] = 0.0
+            self.scene.robot.in_distribution_joint_ids = [0, 3, 7]
 
         # make a smaller scene for play
         # self.scene.num_envs = 50

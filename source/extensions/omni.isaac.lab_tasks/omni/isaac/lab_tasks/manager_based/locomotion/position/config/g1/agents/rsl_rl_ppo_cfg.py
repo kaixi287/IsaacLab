@@ -15,7 +15,7 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
 @configclass
 class G1PosTrackingEnvPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
-    max_iterations = 1400
+    max_iterations = 1200
     save_interval = 200
     experiment_name = "g1_pos_tracking"
     empirical_normalization = False
@@ -29,7 +29,7 @@ class G1PosTrackingEnvPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         value_loss_coef=1.0,
         use_clipped_value_loss=True,
         clip_param=0.2,
-        entropy_coef=0.005,
+        entropy_coef=0.0025,
         num_learning_epochs=5,
         num_mini_batches=4,
         learning_rate=1.0e-3,

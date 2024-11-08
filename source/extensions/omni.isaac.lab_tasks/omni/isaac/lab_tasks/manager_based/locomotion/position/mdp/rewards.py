@@ -397,7 +397,7 @@ def move_in_direction(
 
     # return (vel[:, 0] * vel_target[:, 0] + vel[:, 1] * vel_target[:, 1]) * should_move * _initial_command_duration_mask(env, duration, command_name)
     # Compute cosine similarity and scale to range [0, 1]
-    cosine_similarity = (vel[:, 0] * vel_target[:, 0] + vel[:, 1] * vel_target[:, 1] + 1) / 2
+    cosine_similarity = vel[:, 0] * vel_target[:, 0] + vel[:, 1] * vel_target[:, 1]
     # Use torch.where to set reward to 1 if reached_goal is true, otherwise use cosine_similarity
     reward = torch.where(goal_reached, torch.ones_like(cosine_similarity), cosine_similarity)
 
@@ -455,6 +455,7 @@ def stand_still_pose_reward(
 
     # Invert deviation to create a reward, rewarding closer joint positions
     reward = torch.exp(-joint_deviation)  # The closer to default, the higher the reward
+    # reward = 1 / (1 + joint_deviation)  # The closer to default, the higher the reward
 
     return reward * should_stand * _command_duration_mask(env, duration, command_name)
 

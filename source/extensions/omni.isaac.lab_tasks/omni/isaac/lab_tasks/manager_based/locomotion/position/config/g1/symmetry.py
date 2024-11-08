@@ -124,7 +124,7 @@ def _transform_obs_left_right(obs, has_height_scan=False):
     # Flip velocity commands pos y [10]
     obs[..., 10] *= -1
     # Flip velocity commands ang yaw(z) [11]
-    obs[..., 11] *= -1
+    # obs[..., 11] *= -1
     # dof pos
     obs[..., 12:49] = _switch_arms_legs_lr(obs[..., 12:49])
     # dof vel
