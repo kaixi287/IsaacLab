@@ -69,7 +69,7 @@ class G1Rewards(RewardsCfg):
     # Penalize deviation from default of the joints that are not essential for locomotion
     joint_deviation_hip = RewTerm(
         func=mdp.joint_deviation_l1,
-        weight=-0.01,
+        weight=-0.1,
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_yaw_joint", ".*_hip_roll_joint"])},
     )
     joint_deviation_arms = RewTerm(
@@ -181,12 +181,15 @@ class G1PosTrackingFlatEnvCfg(PosTrackingEnvCfg):
         self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
             "robot", joint_names=[".*_hip_.*", ".*_knee_joint", ".*_ankle_.*"]
         )
+
+        # Reduce the weight for hip joint deviation if hip joint is disabled
+        if getattr(self.events, "disable_joint", None) is not None:
+            self.rewards.joint_deviation_hip.weight = -0.01
         # self.rewards.dont_wait = None
         # self.rewards.stand_still.params["duration"] = 3.0
         # self.rewards.stand_still.params["distance_threshold"] = 0.01
         # self.rewards.stand_still.weight = -0.05
         # self.rewards.move_in_direction.weight = 1.5
-        self.rewards.move_in_direction.params["distance_threshold"] = 1.0e-5
         # self.rewards.tracking_pos.weight = 15.0
 
 
@@ -198,9 +201,13 @@ class G1PosTrackingFlatEnvCfg_PLAY(G1PosTrackingFlatEnvCfg):
         # Set to eval mode
         self.eval_mode = True
         if getattr(self.events, "disable_joint", None) is not None:
-            self.scene.robot.debug_vis = True
             self.events.disable_joint.params["prob_no_disable"] = 0.0
+            self.scene.robot.debug_vis = True
             self.scene.robot.in_distribution_joint_ids = [0, 3, 7]
+
+        if getattr(self.events, "add_payload_to_body", None) is not None:
+            self.scene.robot.debug_vis = True
+            self.scene.robot.in_distribution_external_force_positions = [(-0.07, 0.07), (0.08, 0.11)]
 
         # make a smaller scene for play
         # self.scene.num_envs = 50
