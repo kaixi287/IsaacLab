@@ -380,7 +380,6 @@ def collision(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg) -> torch.Tenso
 def move_in_direction(
     env: ManagerBasedRLEnv,
     command_name: str,
-    distance_threshold: float = 0.25,
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
     epsilon: float = 1e-8,
 ) -> torch.Tensor:
@@ -393,15 +392,7 @@ def move_in_direction(
     x_dot_b = asset.data.root_lin_vel_b[:, :2]
     vel = x_dot_b / (torch.norm(x_dot_b, dim=1).unsqueeze(1) + epsilon)
 
-    goal_reached = torch.norm(des_pos_b - asset.data.root_pos_w[:, :2], dim=1) <= distance_threshold
-
-    # return (vel[:, 0] * vel_target[:, 0] + vel[:, 1] * vel_target[:, 1]) * should_move * _initial_command_duration_mask(env, duration, command_name)
-    # Compute cosine similarity and scale to range [0, 1]
-    cosine_similarity = vel[:, 0] * vel_target[:, 0] + vel[:, 1] * vel_target[:, 1]
-    # Use torch.where to set reward to 1 if reached_goal is true, otherwise use cosine_similarity
-    reward = torch.where(goal_reached, torch.ones_like(cosine_similarity), cosine_similarity)
-
-    return reward
+    return vel[:, 0] * vel_target[:, 0] + vel[:, 1] * vel_target[:, 1]
 
 
 # -- stalling penalty
