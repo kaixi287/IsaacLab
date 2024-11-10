@@ -54,7 +54,7 @@ class G1FlatPPORunnerCfg(G1RoughPPORunnerCfg):
             use_data_augmentation=False,  # this adds symmetric trajectories to the batch
             use_mirror_loss=False,  # this adds symmetry loss term to the loss function
             data_augmentation_func=(  # specify the data augmentation function if any
-                "omni.isaac.lab_tasks.manager_based.locomotion.position.config.g1.symmetry:get_symmetric_states"
+                "omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.g1.symmetry:get_symmetric_states"
             ),
             mirror_loss_coeff=0.0,  # coefficient for symmetry loss term
         )

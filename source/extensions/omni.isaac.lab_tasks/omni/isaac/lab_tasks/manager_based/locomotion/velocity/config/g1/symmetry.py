@@ -3,7 +3,6 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-# TODO implement symmetry for G1
 import torch
 
 from rsl_rl.env import VecEnv
@@ -117,24 +116,21 @@ def _switch_arms_legs_lr(dof):
     return dof_switched
 
 
-def _transform_obs_left_right(obs, has_heading_command=False, has_height_scan=False):
+def _transform_obs_left_right(obs, has_height_scan=False):
     obs = obs.clone()
     # Flip lin vel y [1], ang vel x,z [3, 5], gravity y [7]
     obs[..., [1, 3, 5, 7]] *= -1
-    # Flip position commands pos y [10]
+    # Flip velocity commands pos y [10]
     obs[..., 10] *= -1
-    idx = 12
-    if has_heading_command:
-        idx = 14
-        # Flip heading commands sin component [11]
-        obs[..., 11] *= -1
+    # Flip velocity commands ang yaw(z) [11]
+    obs[..., 11] *= -1
     # dof pos
-    obs[..., idx : idx + 37] = _switch_arms_legs_lr(obs[..., idx : idx + 37])
+    obs[..., 12:49] = _switch_arms_legs_lr(obs[..., 12:49])
     # dof vel
-    obs[..., idx + 37 : idx + 74] = _switch_arms_legs_lr(obs[..., idx + 37 : idx + 74])
+    obs[..., 49:86] = _switch_arms_legs_lr(obs[..., 49:86])
     # last actions
-    obs[..., idx + 74 : idx + 111] = _switch_arms_legs_lr(obs[..., idx + 74 : idx + 111])
-    # TODO: Flip height scan
+    obs[..., 86:123] = _switch_arms_legs_lr(obs[..., 86:123])
+    # TODO: Implement height_scan flipping
     if has_height_scan:
         pass
     return obs
@@ -169,15 +165,11 @@ def get_symmetric_states(
                     hasattr(env.cfg.observations.policy, "height_scan")
                     and env.cfg.observations.policy.height_scan is not None
                 )
-            # Check if pose command contains heading command
-            has_heading_command = False
-            if hasattr(env.cfg.observations.policy, "heading_commands_sin"):
-                has_heading_command = True
 
         num_envs = obs.shape[-2]
         obs_aug = torch.zeros(*obs.shape[:-2], num_envs * 2, obs.shape[-1], device=obs.device)
         obs_aug[..., :num_envs, :] = obs
-        obs_aug[..., num_envs:, :] = _transform_obs_left_right(obs, has_heading_command, has_height_scan)
+        obs_aug[..., num_envs:, :] = _transform_obs_left_right(obs, has_height_scan)
 
     if actions is not None:
         num_envs = actions.shape[-2]
