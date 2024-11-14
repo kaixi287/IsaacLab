@@ -50,7 +50,6 @@ class AnymalDFlatEnvCfg_PLAY(AnymalDFlatEnvCfg):
             self.scene.robot.debug_vis = True
             self.scene.robot.in_distribution_joint_ids = [0, 4, 8]
             self.events.disable_joint.params["prob_no_disable"] = 0.0
-            self.events.disable_joint.params["joint_to_disable"] = -1
         if getattr(self.events, "add_payload_to_body", None) is not None:
             self.scene.robot.debug_vis = True
             self.scene.robot.in_distribution_external_force_positions = [(0.0, 0.4), (0.0, 0.08)]
