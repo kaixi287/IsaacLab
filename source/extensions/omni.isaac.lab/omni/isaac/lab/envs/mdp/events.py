@@ -92,7 +92,10 @@ def disable_joint(
         joints_to_disable[disable_decision] = selected_joints[disable_decision]
     elif joint_to_disable == -1:
         # Generate random joint
-        joint_ids = torch.tensor(asset_cfg.joint_ids, dtype=torch.int, device="cpu")
+        if isinstance(asset_cfg.joint_ids, slice):
+            joint_ids = torch.arange(asset.num_joints, dtype=torch.int, device="cpu")
+        else:
+            joint_ids = torch.tensor(asset_cfg.joint_ids, dtype=torch.int, device="cpu")
         indices = torch.randint(len(joint_ids), (num_envs,), dtype=torch.int, device="cpu")
         random_joints = joint_ids[indices].to(asset.device)
         joints_to_disable[disable_decision] = random_joints[disable_decision]
