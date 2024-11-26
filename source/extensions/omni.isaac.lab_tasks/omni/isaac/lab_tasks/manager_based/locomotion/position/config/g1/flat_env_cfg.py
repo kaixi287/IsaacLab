@@ -183,8 +183,8 @@ class G1PosTrackingFlatEnvCfg(PosTrackingEnvCfg):
         )
 
         # Reduce the weight for hip joint deviation if hip joint is disabled
-        if getattr(self.events, "disable_joint", None) is not None:
-            self.rewards.joint_deviation_hip.weight = -0.01
+        # if getattr(self.events, "disable_joint", None) is not None:
+        #     self.rewards.joint_deviation_hip.weight = -0.01
         # self.rewards.dont_wait = None
         # self.rewards.stand_still.params["duration"] = 3.0
         # self.rewards.stand_still.params["distance_threshold"] = 0.01
