@@ -9,9 +9,8 @@ import torch
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from omni.isaac.core.utils.types import ArticulationActions
-
 from omni.isaac.lab.utils import DelayBuffer, LinearInterpolation
+from omni.isaac.lab.utils.types import ArticulationActions
 
 from .actuator_base import ActuatorBase
 
@@ -61,9 +60,28 @@ class ImplicitActuator(ActuatorBase):
         pass
 
     def compute(
-        self, control_action: ArticulationActions, joint_pos: torch.Tensor, joint_vel: torch.Tensor, disabled_joint_ids: torch.Tensor | None = None
+        self,
+        control_action: ArticulationActions,
+        joint_pos: torch.Tensor,
+        joint_vel: torch.Tensor,
+        disabled_joint_ids: torch.Tensor | None = None,
     ) -> ArticulationActions:
-        """Compute the aproximmate torques for the actuated joint (physX does not compute this explicitly)."""
+        """Process the actuator group actions and compute the articulation actions.
+
+        In case of implicit actuator, the control action is directly returned as the computed action.
+        This function is a no-op and does not perform any computation on the input control action.
+        However, it computes the approximate torques for the actuated joint since PhysX does not compute
+        this quantity explicitly.
+
+        Args:
+            control_action: The joint action instance comprising of the desired joint positions, joint velocities
+                and (feed-forward) joint efforts.
+            joint_pos: The current joint positions of the joints in the group. Shape is (num_envs, num_joints).
+            joint_vel: The current joint velocities of the joints in the group. Shape is (num_envs, num_joints).
+
+        Returns:
+            The computed desired joint positions, joint velocities and joint efforts.
+        """
         # store approximate torques for reward computation
         error_pos = control_action.joint_positions - joint_pos
         error_vel = control_action.joint_velocities - joint_vel
@@ -76,7 +94,9 @@ class ImplicitActuator(ActuatorBase):
             # Only apply the mask if there are any joints to disable
             if torch.any(disable_mask):
                 # Get the environments and joints to disable
-                envs_to_disable = torch.nonzero(disable_mask).squeeze()  # Indices of environments where a joint should be disabled
+                envs_to_disable = torch.nonzero(
+                    disable_mask
+                ).squeeze()  # Indices of environments where a joint should be disabled
                 joints_to_disable = disabled_joint_ids[disable_mask]  # The corresponding joint indices to disable
 
                 # Set the effort to 0 for the disabled joints
@@ -129,7 +149,11 @@ class IdealPDActuator(ActuatorBase):
         pass
 
     def compute(
-        self, control_action: ArticulationActions, joint_pos: torch.Tensor, joint_vel: torch.Tensor, disabled_joint_ids: torch.Tensor | None = None
+        self,
+        control_action: ArticulationActions,
+        joint_pos: torch.Tensor,
+        joint_vel: torch.Tensor,
+        disabled_joint_ids: torch.Tensor | None = None,
     ) -> ArticulationActions:
         # compute errors
         error_pos = control_action.joint_positions - joint_pos

@@ -18,9 +18,8 @@ import torch
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from omni.isaac.core.utils.types import ArticulationActions
-
 from omni.isaac.lab.utils.assets import read_file
+from omni.isaac.lab.utils.types import ArticulationActions
 
 from .actuator_pd import DCMotor
 
@@ -64,7 +63,6 @@ class ActuatorNetLSTM(DCMotor):
         self.sea_hidden_state_per_env = self.sea_hidden_state.view(layer_shape_per_env)
         self.sea_cell_state_per_env = self.sea_cell_state.view(layer_shape_per_env)
 
-
     """
     Operations.
     """
@@ -76,7 +74,11 @@ class ActuatorNetLSTM(DCMotor):
             self.sea_cell_state_per_env[:, env_ids] = 0.0
 
     def compute(
-        self, control_action: ArticulationActions, joint_pos: torch.Tensor, joint_vel: torch.Tensor, disabled_joint_ids: torch.Tensor | None = None
+        self,
+        control_action: ArticulationActions,
+        joint_pos: torch.Tensor,
+        joint_vel: torch.Tensor,
+        disabled_joint_ids: torch.Tensor | None = None,
     ) -> ArticulationActions:
         # compute network inputs
         self.sea_input[:, 0, 0] = (control_action.joint_positions - joint_pos).flatten()
