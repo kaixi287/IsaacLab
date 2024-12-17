@@ -78,6 +78,9 @@ class RslRlPpoAlgorithmCfg:
     meta_episode_length: int = MISSING
     """The length of the meta-episode."""
 
+    disable_update: bool = False
+    """Whether to disable policy updates, e.g. to evaluate the model."""
+
 
 @configclass
 class RslRlOnPolicyRunnerCfg:

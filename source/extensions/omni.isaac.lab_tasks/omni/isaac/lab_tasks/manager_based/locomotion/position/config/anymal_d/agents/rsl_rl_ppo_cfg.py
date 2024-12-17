@@ -15,8 +15,8 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
 @configclass
 class AnymalDPosTrackingEnvPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 48
-    max_iterations = 2000
-    save_interval = 100
+    max_iterations = 30000
+    save_interval = 500
     experiment_name = "anymal_d_pos_tracking"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
@@ -41,7 +41,7 @@ class AnymalDPosTrackingEnvPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         max_grad_norm=1.0,
         # -- Symmetry Augmentation
         symmetry_cfg=dict(
-            use_data_augmentation=False,  # this adds symmetric trajectories to the batch
+            use_data_augmentation=True,  # this adds symmetric trajectories to the batch
             use_mirror_loss=False,  # this adds symmetry loss term to the loss function
             data_augmentation_func=(  # specify the data augmentation function if any
                 "omni.isaac.lab_tasks.manager_based.locomotion.position.config.anymal_d.symmetry:get_symmetric_states"

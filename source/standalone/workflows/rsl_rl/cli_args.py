@@ -95,5 +95,7 @@ def update_rsl_rl_cfg(agent_cfg: RslRlOnPolicyRunnerCfg, args_cli: argparse.Name
         agent_cfg.wandb_run_name = args_cli.log_run_name
     if args_cli.actor_critic_class_name is not None:
         agent_cfg.policy.class_name = args_cli.actor_critic_class_name
+    if hasattr(args_cli, "disable_update") and args_cli.disable_update is not None:
+        agent_cfg.algorithm.disable_update = args_cli.disable_update
 
     return agent_cfg

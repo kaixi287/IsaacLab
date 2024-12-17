@@ -754,6 +754,23 @@ def add_payload_to_body(
     y_positions = sample_from_ranges(y_position_range, len(env_ids), num_bodies, asset.device)
     z_positions = sample_from_ranges(z_position_range, len(env_ids), num_bodies, asset.device)
 
+    # OOD sampling
+    # while True:
+    #     # Create a mask for positive x and positive y values
+    #     positive_x_mask = x_positions > 0.0
+    #     positive_y_mask = y_positions > 0.0
+
+    #     # Find conflicting elements where both x and y are positive
+    #     conflict_mask = positive_x_mask & positive_y_mask
+
+    #     # If no conflict exists, exit the loop
+    #     if not torch.any(conflict_mask):
+    #         break
+
+    #     # Resample x and y where the conflict mask is true
+    #     x_positions[conflict_mask] = sample_from_ranges(x_position_range, x_positions[conflict_mask].shape[0], num_bodies, asset.device).squeeze()
+    #     y_positions[conflict_mask] = sample_from_ranges(y_position_range, y_positions[conflict_mask].shape[0], num_bodies, asset.device).squeeze()
+
     # Concatenate x, y, and z to form the position vectors
     positions = torch.cat([x_positions, y_positions, z_positions], dim=-1)
 

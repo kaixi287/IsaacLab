@@ -37,9 +37,10 @@ class CommandsCfg:
         polar_sampling=True,
         ranges=mdp.UniformPose2dCommandCfg.Ranges(pos_x=(-3.0, 3.0), pos_y=(-3.0, 3.0), heading=(-math.pi, math.pi)),
         polar_ranges=mdp.UniformPose2dCommandCfg.PolarRanges(
-            radius=(1.0, 5.0), theta=(-math.pi, math.pi), heading=(-math.pi, math.pi)
+            radius=(0.0, 5.0), theta=(-math.pi, math.pi), heading=(-math.pi, math.pi)
         ),
         include_heading=False,
+        standing_command_prob=0.1,
     )
 
 
@@ -146,16 +147,17 @@ class EventCfg:
     #     func=mdp.add_payload_to_body,
     #     mode="reset",
     #     params={
-    #         # "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-    #         # "mass_range": (15.0, 20.0),
-    #         # "x_position_range": (0.0, 0.4),
-    #         # "y_position_range": (0.0, 0.08),
-    #         # "z_position_range": (0.1325, 0.1325),
-    #         "asset_cfg": SceneEntityCfg("robot", body_names="torso_link"),
-    #         "mass_range": (40.0, 50.0),
-    #         "x_position_range": (-0.07, 0.07),
-    #         "y_position_range": [(-0.11, -0.08), (0.08, 0.11)],
-    #         "z_position_range": (0.31, 0.31),
+    #         "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+    #         "mass_range": (30.0, 40.0),
+    #         "x_position_range": (-0.4, 0.4),
+    #         "y_position_range": (-0.08, 0.08),
+    #         "z_position_range": (0.1325, 0.1325),
+    #         # "asset_cfg": SceneEntityCfg("robot", body_names="torso_link"),
+    #         # "mass_range": (40.0, 50.0),
+    #         # "x_position_range": (-0.07, 0.07),
+    #         # # "y_position_range": [(-0.11, -0.08), (0.08, 0.11)],
+    #         # "y_position_range": (0.08, 0.11),
+    #         # "z_position_range": (0.31, 0.31),
     #     },
     # )
 
@@ -164,7 +166,7 @@ class EventCfg:
         mode="reset",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "joint_to_disable": [0, 3, 7, 1, 4, 8],  # Index of joint to disable
+            "joint_to_disable": [0, 4, 8],  # Index of joint to disable
             "prob_no_disable": 0.2,
         },
     )
@@ -190,13 +192,22 @@ class RewardsCfg:
 
     # # -- optional penalties
     flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=-1.0)
+    feet_air_time = RewTerm(
+        func=mdp.feet_air_time,
+        weight=0.125,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*FOOT"),
+            "command_name": "pose_command",
+            "threshold": 0.5,
+        },
+    )
 
     # Task related rewards
     # dont_wait = RewTerm(func=mdp.dont_wait, weight=-1.0, params={"min_vel": 0.2, "command_name": "pose_command"})
     move_in_direction = RewTerm(func=mdp.move_in_direction, weight=1.0, params={"command_name": "pose_command"})
-    # stand_still = RewTerm(
-    #     func=mdp.stand_still_pose, weight=-0.05, params={"duration": 1.0, "command_name": "pose_command"}
-    # )
+    stand_still = RewTerm(
+        func=mdp.stand_still_pose, weight=-0.05, params={"duration": 1.0, "command_name": "pose_command"}
+    )
 
 
 @configclass

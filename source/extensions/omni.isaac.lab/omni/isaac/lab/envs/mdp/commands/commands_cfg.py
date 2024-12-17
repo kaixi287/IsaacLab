@@ -209,6 +209,9 @@ class UniformPose2dCommandCfg(CommandTermCfg):
     If True, the heading is in the direction of the target position.
     """
 
+    standing_command_prob: float = 0.0
+    """The probability of environments that should be standing still. Defaults to 0.0."""
+
     @configclass
     class Ranges:
         """Uniform distribution ranges for the position commands."""
