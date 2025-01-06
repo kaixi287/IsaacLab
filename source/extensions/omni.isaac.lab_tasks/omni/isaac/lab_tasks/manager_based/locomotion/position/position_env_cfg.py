@@ -67,9 +67,7 @@ class ObservationsCfg:
         )
         pos_commands = ObsTerm(func=mdp.pos_commands, params={"command_name": "pose_command"})
         # heading_commands = ObsTerm(func=mdp.heading_commands_sin, params={"command_name": "pose_command"})
-        time_to_target = ObsTerm(
-            func=mdp.time_to_target, params={"command_name": "pose_command"}, noise=Unoise(n_min=-0.1, n_max=0.1)
-        )
+        time_to_target = ObsTerm(func=mdp.time_to_target, params={"command_name": "pose_command"})
         joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
         actions = ObsTerm(func=mdp.last_action)
@@ -142,33 +140,33 @@ class EventCfg:
         },
     )
 
-    add_payload_to_body = EventTerm(
-        func=mdp.add_payload_to_body,
-        mode="reset",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "mass_range": (30.0, 40.0),
-            "x_position_range": (-0.4, 0.4),
-            "y_position_range": (-0.08, 0.08),
-            "z_position_range": (0.1325, 0.1325),
-            # "asset_cfg": SceneEntityCfg("robot", body_names="torso_link"),
-            # "mass_range": (40.0, 50.0),
-            # "x_position_range": (-0.07, 0.07),
-            # # "y_position_range": [(-0.11, -0.08), (0.08, 0.11)],
-            # "y_position_range": (0.08, 0.11),
-            # "z_position_range": (0.31, 0.31),
-        },
-    )
-
-    # disable_joint = EventTerm(
-    #     func=mdp.disable_joint,
+    # add_payload_to_body = EventTerm(
+    #     func=mdp.add_payload_to_body,
     #     mode="reset",
     #     params={
-    #         "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-    #         "joint_to_disable": [0, 4, 8],  # Index of joint to disable
-    #         "prob_no_disable": 0.2,
+    #         "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+    #         "mass_range": (30.0, 40.0),
+    #         "x_position_range": (-0.4, 0.4),
+    #         "y_position_range": (-0.08, 0.08),
+    #         "z_position_range": (0.1325, 0.1325),
+    #         # "asset_cfg": SceneEntityCfg("robot", body_names="torso_link"),
+    #         # "mass_range": (40.0, 50.0),
+    #         # "x_position_range": (-0.07, 0.07),
+    #         # # "y_position_range": [(-0.11, -0.08), (0.08, 0.11)],
+    #         # "y_position_range": (0.08, 0.11),
+    #         # "z_position_range": (0.31, 0.31),
     #     },
     # )
+
+    disable_joint = EventTerm(
+        func=mdp.disable_joint,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+            "joint_to_disable": -1,  # Index of joint to disable
+            "prob_no_disable": 0.2,
+        },
+    )
 
 
 @configclass
