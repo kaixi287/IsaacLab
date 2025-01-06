@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -142,32 +142,33 @@ class EventCfg:
         },
     )
 
-    # add_payload_to_body = EventTerm(
-    #     func=mdp.add_payload_to_body,
-    #     mode="reset",
-    #     params={
-    #         # "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-    #         # "mass_range": (15.0, 20.0),
-    #         # "x_position_range": (0.0, 0.4),
-    #         # "y_position_range": (0.0, 0.08),
-    #         # "z_position_range": (0.1325, 0.1325),
-    #         "asset_cfg": SceneEntityCfg("robot", body_names="torso_link"),
-    #         "mass_range": (40.0, 50.0),
-    #         "x_position_range": (-0.07, 0.07),
-    #         "y_position_range": [(-0.11, -0.08), (0.08, 0.11)],
-    #         "z_position_range": (0.31, 0.31),
-    #     },
-    # )
-
-    disable_joint = EventTerm(
-        func=mdp.disable_joint,
+    add_payload_to_body = EventTerm(
+        func=mdp.add_payload_to_body,
         mode="reset",
         params={
-            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "joint_to_disable": [0, 3, 7, 1, 4, 8],  # Index of joint to disable
-            "prob_no_disable": 0.2,
+            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+            "mass_range": (30.0, 40.0),
+            "x_position_range": (-0.4, 0.4),
+            "y_position_range": (-0.08, 0.08),
+            "z_position_range": (0.1325, 0.1325),
+            # "asset_cfg": SceneEntityCfg("robot", body_names="torso_link"),
+            # "mass_range": (40.0, 50.0),
+            # "x_position_range": (-0.07, 0.07),
+            # # "y_position_range": [(-0.11, -0.08), (0.08, 0.11)],
+            # "y_position_range": (0.08, 0.11),
+            # "z_position_range": (0.31, 0.31),
         },
     )
+
+    # disable_joint = EventTerm(
+    #     func=mdp.disable_joint,
+    #     mode="reset",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+    #         "joint_to_disable": [0, 4, 8],  # Index of joint to disable
+    #         "prob_no_disable": 0.2,
+    #     },
+    # )
 
 
 @configclass
@@ -190,13 +191,23 @@ class RewardsCfg:
 
     # # -- optional penalties
     flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=-1.0)
+    feet_air_time = RewTerm(
+        func=mdp.feet_air_time,
+        weight=0.125,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*FOOT"),
+            "command_name": "pose_command",
+            "threshold": 0.5,
+        },
+    )
 
     # Task related rewards
-    # dont_wait = RewTerm(func=mdp.dont_wait, weight=-1.0, params={"min_vel": 0.2, "command_name": "pose_command"})
+    dont_wait = RewTerm(func=mdp.dont_wait, weight=-1.0, params={"min_vel": 0.2, "command_name": "pose_command"})
     move_in_direction = RewTerm(func=mdp.move_in_direction, weight=1.0, params={"command_name": "pose_command"})
-    # stand_still = RewTerm(
-    #     func=mdp.stand_still_pose, weight=-0.05, params={"duration": 1.0, "command_name": "pose_command"}
-    # )
+    stand_still = RewTerm(
+        func=mdp.stand_still_pose, weight=-0.05, params={"duration": 1.0, "command_name": "pose_command"}
+    )
+    # stand_still_vel = RewTerm(func=mdp.stand_still_vel, weight=-0.05, params={"duration": 1.0})
 
 
 @configclass
