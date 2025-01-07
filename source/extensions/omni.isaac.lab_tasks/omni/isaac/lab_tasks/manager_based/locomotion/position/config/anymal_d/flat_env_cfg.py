@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -42,7 +42,6 @@ class AnymalDTerminationsCfg(TerminationsCfg):
 
 @configclass
 class AnymalDRewards(RewardsCfg):
-    # TODO: still needed?
     base_acc = RewTerm(
         func=mdp.base_acc, weight=-0.001, params={"asset_cfg": SceneEntityCfg("robot", body_names=["base"])}
     )
@@ -91,6 +90,7 @@ class AnymalDPosTrackingFlatEnvCfg(PosTrackingEnvCfg):
         self.observations.critic.height_scan = None
 
         # Rewards
+        # self.rewards.feet_air_time.weight = 0.5
         if getattr(self.rewards, "ang_vel_xy_l2", None) is not None:
             self.rewards.ang_vel_xy_l2.weight = 0.0
 
