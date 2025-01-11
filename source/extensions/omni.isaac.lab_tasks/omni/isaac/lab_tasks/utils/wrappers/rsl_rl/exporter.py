@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -113,6 +113,7 @@ class _OnnxPolicyExporter(torch.nn.Module):
         x_in = self.normalizer(x_in)
         x, (h, c) = self.rnn(x_in.unsqueeze(0), (h_in, c_in))
         x = x.squeeze(0)
+        x = torch.cat((x_in, x), dim=-1)
         return self.actor(x), h, c
 
     def forward(self, x):
