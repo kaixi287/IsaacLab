@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -22,8 +22,6 @@ from omni.isaac.lab_assets import G1_MINIMAL_CFG  # isort: skip
 
 @configclass
 class G1Rewards(RewardsCfg):
-    # action_rate_huber = RewTerm(func=mdp.action_rate_huber, weight=-1.0e-4, params={"delta": 0.5})
-    # action_l2 = RewTerm(func=mdp.action_l2, weight=-1.0e-4)
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_positive_biped,
         weight=0.75,

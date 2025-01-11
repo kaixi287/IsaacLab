@@ -53,7 +53,7 @@ class AnymalDRewards(RewardsCfg):
     dof_vel_limits = RewTerm(func=mdp.joint_vel_limits, weight=-1.0, params={"soft_ratio": 0.9})
     contact_forces = RewTerm(
         func=mdp.contact_forces,
-        weight=-0.00001,
+        weight=-1e-5,
         params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*"), "threshold": 700.0},
     )
     collision = RewTerm(
