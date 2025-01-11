@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -55,10 +55,10 @@ class UniformPose2dCommand(CommandTerm):
         self._pos_command_w = torch.zeros(self.num_envs, 3, device=self.device)
         self.pos_command_b = torch.zeros_like(self._pos_command_w)
         self._heading_command_w = torch.zeros(self.num_envs, device=self.device)
-        
+
         # -- metrics
         self.metrics["error_pos"] = torch.zeros(self.num_envs, device=self.device)
-        
+
         # create buffers for heading command
         if self.cfg.include_heading:
             self.heading_command_b = torch.zeros_like(self._heading_command_w)
@@ -81,11 +81,11 @@ class UniformPose2dCommand(CommandTerm):
             return torch.cat([self.pos_command_b, self.heading_command_b.unsqueeze(1)], dim=1)
         else:
             return self.pos_command_b
-    
+
     @property
     def pos_command_w(self) -> torch.Tensor:
         return self._pos_command_w
-    
+
     @property
     def heading_command_w(self) -> torch.Tensor:
         return self._heading_command_w
@@ -103,48 +103,63 @@ class UniformPose2dCommand(CommandTerm):
     def _resample_command(self, env_ids: Sequence[int]):
         # obtain env origins for the environments
         self._pos_command_w[env_ids] = self._env.scene.env_origins[env_ids]
-        
-        if self.cfg.polar_sampling:
-            # Sample random radii and angles for polar coordinates
-            r = torch.empty(len(env_ids), device=self.device)
-            theta = torch.empty(len(env_ids), device=self.device)
-
-            radius = r.uniform_(*self.cfg.polar_ranges.radius)
-            angle = theta.uniform_(*self.cfg.polar_ranges.theta)
-
-            # Apply the offsets to the position commands
-            self._pos_command_w[env_ids, 0] += radius * torch.cos(angle)
-            self._pos_command_w[env_ids, 1] += radius * torch.sin(angle)
-        else:
-            # offset the position command by the current root position
-            r = torch.empty(len(env_ids), device=self.device)
-            self._pos_command_w[env_ids, 0] += r.uniform_(*self.cfg.ranges.pos_x)
-            self._pos_command_w[env_ids, 1] += r.uniform_(*self.cfg.ranges.pos_y)
-        
         # offset the position command by the default root height
         self._pos_command_w[env_ids, 2] += self.robot.data.default_root_state[env_ids, 2]
-        
+        # set heading command to current robot heading
         if self.cfg.include_heading:
-            if self.cfg.simple_heading:
-                # set heading command to point towards target
-                target_vec = self._pos_command_w[env_ids] - self.robot.data.root_pos_w[env_ids]
-                target_direction = torch.atan2(target_vec[:, 1], target_vec[:, 0])
-                flipped_target_direction = wrap_to_pi(target_direction + torch.pi)
+            self._heading_command_w[env_ids] = self.robot.data.heading_w[env_ids]
 
-                # compute errors to find the closest direction to the current heading
-                # this is done to avoid the discontinuity at the -pi/pi boundary
-                curr_to_target = wrap_to_pi(target_direction - self.robot.data.heading_w[env_ids]).abs()
-                curr_to_flipped_target = wrap_to_pi(flipped_target_direction - self.robot.data.heading_w[env_ids]).abs()
+        # Create mask for environments to resample commands
+        command_resample_mask = torch.full((len(env_ids),), True, dtype=torch.bool, device=self.device)
+        if self.cfg.standing_command_prob > 0.0:
+            command_resample_mask = torch.rand(len(env_ids), device=self.device) >= self.cfg.standing_command_prob
 
-                # set the heading command to the closest direction
-                self._heading_command_w[env_ids] = torch.where(
-                    curr_to_target < curr_to_flipped_target,
-                    target_direction,
-                    flipped_target_direction,
-                )
+        if command_resample_mask.any():
+            env_ids_tensor = torch.tensor(env_ids, device=self.device)
+            resample_env_ids = env_ids_tensor[command_resample_mask]
+            r = torch.empty(len(resample_env_ids), device=self.device)
+            if self.cfg.polar_sampling:
+                # Sample random radii and angles for polar coordinates
+                radius = r.uniform_(*self.cfg.polar_ranges.radius)
+                angle = r.uniform_(*self.cfg.polar_ranges.theta)
+
+                # radius = torch.tensor([4] * len(env_ids), device=self.device, dtype=torch.float)
+                # angle = torch.tensor([-torch.pi/2, torch.pi/2, -torch.pi/2, torch.pi/2, -torch.pi/2, torch.pi/2, -torch.pi/2, torch.pi/2],
+                #             device=self.device, dtype=torch.float)
+                # angle = torch.tensor([torch.pi/2, torch.pi/4, torch.pi/2, 3*torch.pi/4, -torch.pi/2, -torch.pi/4, -torch.pi/2, -3*torch.pi/4],
+                #     device=self.device, dtype=torch.float)
+
+                # Apply the offsets to the position commands
+                self._pos_command_w[resample_env_ids, 0] += radius * torch.cos(angle)
+                self._pos_command_w[resample_env_ids, 1] += radius * torch.sin(angle)
             else:
-                # random heading command
-                self._heading_command_w[env_ids] = r.uniform_(*self.cfg.ranges.heading)
+                # offset the position command by the current root position
+                self._pos_command_w[resample_env_ids, 0] += r.uniform_(*self.cfg.ranges.pos_x)
+                self._pos_command_w[resample_env_ids, 1] += r.uniform_(*self.cfg.ranges.pos_y)
+
+            if self.cfg.include_heading:
+                if self.cfg.simple_heading:
+                    # set heading command to point towards target
+                    target_vec = self._pos_command_w[resample_env_ids] - self.robot.data.root_pos_w[resample_env_ids]
+                    target_direction = torch.atan2(target_vec[:, 1], target_vec[:, 0])
+                    flipped_target_direction = wrap_to_pi(target_direction + torch.pi)
+
+                    # compute errors to find the closest direction to the current heading
+                    # this is done to avoid the discontinuity at the -pi/pi boundary
+                    curr_to_target = wrap_to_pi(target_direction - self.robot.data.heading_w[resample_env_ids]).abs()
+                    curr_to_flipped_target = wrap_to_pi(
+                        flipped_target_direction - self.robot.data.heading_w[resample_env_ids]
+                    ).abs()
+
+                    # set the heading command to the closest direction
+                    self._heading_command_w[resample_env_ids] = torch.where(
+                        curr_to_target < curr_to_flipped_target,
+                        target_direction,
+                        flipped_target_direction,
+                    )
+                else:
+                    # random heading command
+                    self._heading_command_w[resample_env_ids] = r.uniform_(*self.cfg.ranges.heading)
 
     def _update_command(self):
         """Re-target the position command to the current root state."""
@@ -205,21 +220,23 @@ class UniformPose2dCommand(CommandTerm):
             direction_vector = _pos_command_w - base_pos_w  # Vector from robot to target
             distance = torch.norm(direction_vector, dim=-1, keepdim=True)  # Compute distance
             yaw_angles = torch.atan2(direction_vector[:, 1], direction_vector[:, 0])
-            
+
             # Compute orientation using the provided quat_from_euler_xyz function
             connection_orientations = quat_from_euler_xyz(
                 roll=torch.zeros_like(yaw_angles),  # No roll
-                pitch=torch.zeros_like(yaw_angles), # No pitch
-                yaw=yaw_angles                      # Yaw angle derived from direction vector
+                pitch=torch.zeros_like(yaw_angles),  # No pitch
+                yaw=yaw_angles,  # Yaw angle derived from direction vector
             )
-            
+
             # Scale the arrow to span the distance between robot and target
-            connection_scales = torch.cat([distance, torch.full_like(distance, 0.03),torch.full_like(distance, 0.03)], dim=-1)
-            
+            connection_scales = torch.cat(
+                [distance, torch.full_like(distance, 0.03), torch.full_like(distance, 0.03)], dim=-1
+            )
+
             self.connection_visualizer.visualize(
                 translations=base_pos_w + (_pos_command_w - base_pos_w) * 0.25,  # Midpoint between robot and target
                 orientations=connection_orientations,
-                scales=connection_scales
+                scales=connection_scales,
             )
 
 

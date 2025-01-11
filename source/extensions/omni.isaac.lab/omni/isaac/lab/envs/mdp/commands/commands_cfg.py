@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -208,6 +208,9 @@ class UniformPose2dCommandCfg(CommandTermCfg):
 
     If True, the heading is in the direction of the target position.
     """
+
+    standing_command_prob: float = 0.0
+    """The probability of environments that should be standing still. Defaults to 0.0."""
 
     @configclass
     class Ranges:
