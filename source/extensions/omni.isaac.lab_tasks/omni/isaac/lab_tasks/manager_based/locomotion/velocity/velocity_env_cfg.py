@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -222,14 +222,15 @@ class EventCfg:
         mode="reset",
         params={
             # "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            # "mass_range": (15.0, 20.0),
+            # "mass_range": (30.0, 40.0),
             # "x_position_range": (0.0, 0.4),
             # "y_position_range": (0.0, 0.08),
             # "z_position_range": (0.1325, 0.1325),
             "asset_cfg": SceneEntityCfg("robot", body_names="torso_link"),
             "mass_range": (40.0, 50.0),
-            "x_position_range": (-0.07, 0.07),
-            "y_position_range": [(-0.11, -0.08), (0.08, 0.11)],
+            "x_position_range": (0.0, 0.0),
+            # "y_position_range": [(-0.11, -0.08), (0.08, 0.11)],
+            "y_position_range": (0.08, 0.11),
             "z_position_range": (0.31, 0.31),
         },
     )
@@ -239,7 +240,7 @@ class EventCfg:
     #     mode="reset",
     #     params={
     #         "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-    #         "joint_to_disable": [0, 3, 7],  # Index of joint to disable
+    #         "joint_to_disable": [1, 4, 8],  # Index of joint to disable
     #         "prob_no_disable": 0.2,
     #     },
     # )
