@@ -24,7 +24,7 @@ from omni.isaac.lab_assets import G1_MINIMAL_CFG  # isort: skip
 class G1Rewards(RewardsCfg):
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_positive_biped,
-        weight=0.75,
+        weight=1.25,
         params={
             "command_name": "pose_command",
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
@@ -33,7 +33,7 @@ class G1Rewards(RewardsCfg):
     )
     feet_slide = RewTerm(
         func=mdp.feet_slide,
-        weight=-0.1,
+        weight=-0.25,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
             "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
@@ -45,6 +45,7 @@ class G1Rewards(RewardsCfg):
         weight=-1.0e-7,
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_.*", ".*_knee_joint"])},
     )
+
     # base_acc = RewTerm(
     #     func=mdp.base_acc, weight=-0.001, params={"asset_cfg": SceneEntityCfg("robot", body_names=["torso_link"])}
     # )
@@ -58,6 +59,7 @@ class G1Rewards(RewardsCfg):
     #     func=mdp.joint_vel_limits,
     #     weight=-1.0,
     #     params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_ankle_pitch_joint", ".*_ankle_roll_joint"]), "soft_ratio": 0.9})
+
     # Penalize ankle joint limits
     dof_pos_limits = RewTerm(
         func=mdp.joint_pos_limits,
@@ -67,7 +69,7 @@ class G1Rewards(RewardsCfg):
     # Penalize deviation from default of the joints that are not essential for locomotion
     joint_deviation_hip = RewTerm(
         func=mdp.joint_deviation_l1,
-        weight=-0.02,
+        weight=-0.1,
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_yaw_joint", ".*_hip_roll_joint"])},
     )
     joint_deviation_arms = RewTerm(
@@ -179,6 +181,8 @@ class G1PosTrackingFlatEnvCfg(PosTrackingEnvCfg):
         self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
             "robot", joint_names=[".*_hip_.*", ".*_knee_joint", ".*_ankle_.*"]
         )
+        self.rewards.stand_still.weight = -0.25
+        self.rewards.stand_still.params["duration"] = 1.5
 
         # Reduce the weight for hip joint deviation if hip joint is disabled
         # if getattr(self.events, "disable_joint", None) is not None:

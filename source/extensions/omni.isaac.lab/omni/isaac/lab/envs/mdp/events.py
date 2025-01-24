@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -77,30 +77,40 @@ def disable_joint(
     num_envs = len(env_ids)
 
     # Determine whether to disable joints based on probability
-    disable_decision = torch.rand(num_envs, device=asset.device) >= prob_no_disable
+    # disable_decision = torch.rand(num_envs, device=asset.device) >= prob_no_disable
 
     # Initialize tensor for joints to disable with -1 indicating no joint to disable
     joints_to_disable = torch.full((num_envs,), -1, dtype=torch.int, device=asset.device)
 
+    hardcoded_joints = torch.tensor([10], dtype=torch.int, device=env.device)
+
+    if len(hardcoded_joints) != len(env_ids):
+        raise ValueError(
+            f"The number of hardcoded joints ({len(hardcoded_joints)}) does not match the number of environments"
+            f" ({len(env_ids)})."
+        )
+
+    joints_to_disable[:] = hardcoded_joints[:]
+
     # Determine joints to disable
-    if isinstance(joint_to_disable, list):
-        # Sample from the list of joint indices
-        joint_to_disable = torch.tensor(joint_to_disable, dtype=torch.int, device="cpu")
-        indices = torch.randint(len(joint_to_disable), (num_envs,), dtype=torch.int, device="cpu")
-        selected_joints = joint_to_disable[indices].to(asset.device)
-        joints_to_disable[disable_decision] = selected_joints[disable_decision]
-    elif joint_to_disable == -1:
-        # Generate random joint
-        if isinstance(asset_cfg.joint_ids, slice):
-            joint_ids = torch.arange(asset.num_joints, dtype=torch.int, device="cpu")
-        else:
-            joint_ids = torch.tensor(asset_cfg.joint_ids, dtype=torch.int, device="cpu")
-        indices = torch.randint(len(joint_ids), (num_envs,), dtype=torch.int, device="cpu")
-        random_joints = joint_ids[indices].to(asset.device)
-        joints_to_disable[disable_decision] = random_joints[disable_decision]
-    else:
-        selected_joint = torch.tensor([joint_to_disable] * num_envs, dtype=torch.int, device=asset.device)
-        joints_to_disable[disable_decision] = selected_joint[disable_decision]
+    # if isinstance(joint_to_disable, list):
+    #     # Sample from the list of joint indices
+    #     joint_to_disable = torch.tensor(joint_to_disable, dtype=torch.int, device="cpu")
+    #     indices = torch.randint(len(joint_to_disable), (num_envs,), dtype=torch.int, device="cpu")
+    #     selected_joints = joint_to_disable[indices].to(asset.device)
+    #     joints_to_disable[disable_decision] = selected_joints[disable_decision]
+    # elif joint_to_disable == -1:
+    #     # Generate random joint
+    #     if isinstance(asset_cfg.joint_ids, slice):
+    #         joint_ids = torch.arange(asset.num_joints, dtype=torch.int, device="cpu")
+    #     else:
+    #         joint_ids = torch.tensor(asset_cfg.joint_ids, dtype=torch.int, device="cpu")
+    #     indices = torch.randint(len(joint_ids), (num_envs,), dtype=torch.int, device="cpu")
+    #     random_joints = joint_ids[indices].to(asset.device)
+    #     joints_to_disable[disable_decision] = random_joints[disable_decision]
+    # else:
+    #     selected_joint = torch.tensor([joint_to_disable] * num_envs, dtype=torch.int, device=asset.device)
+    #     joints_to_disable[disable_decision] = selected_joint[disable_decision]
 
     # Update markers to show which joint is disabled
     asset.update_disabled_joints(env_ids, joints_to_disable)
@@ -753,6 +763,23 @@ def add_payload_to_body(
     x_positions = sample_from_ranges(x_position_range, len(env_ids), num_bodies, asset.device)
     y_positions = sample_from_ranges(y_position_range, len(env_ids), num_bodies, asset.device)
     z_positions = sample_from_ranges(z_position_range, len(env_ids), num_bodies, asset.device)
+
+    # OOD sampling
+    # while True:
+    #     # Create a mask for positive x and positive y values
+    #     positive_x_mask = x_positions > 0.0
+    #     positive_y_mask = y_positions > 0.0
+
+    #     # Find conflicting elements where both x and y are positive
+    #     conflict_mask = positive_x_mask & positive_y_mask
+
+    #     # If no conflict exists, exit the loop
+    #     if not torch.any(conflict_mask):
+    #         break
+
+    #     # Resample x and y where the conflict mask is true
+    #     x_positions[conflict_mask] = sample_from_ranges(x_position_range, x_positions[conflict_mask].shape[0], num_bodies, asset.device).squeeze()
+    #     y_positions[conflict_mask] = sample_from_ranges(y_position_range, y_positions[conflict_mask].shape[0], num_bodies, asset.device).squeeze()
 
     # Concatenate x, y, and z to form the position vectors
     positions = torch.cat([x_positions, y_positions, z_positions], dim=-1)

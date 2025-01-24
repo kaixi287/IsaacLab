@@ -12,6 +12,7 @@ from omni.isaac.lab.markers.config import (  # noqa: F401
     BLUE_ARROW_X_MARKER_CFG,
     FRAME_MARKER_CFG,
     GREEN_ARROW_X_MARKER_CFG,
+    GREEN_SPHERE_MARKER_CFG,
     ORANGE_SPHERE_MARKER_CFG,
     WHITE_ARROW_X_MARKER_CFG,
 )
@@ -254,7 +255,7 @@ class UniformPose2dCommandCfg(CommandTermCfg):
     # goal_pose_visualizer_cfg: VisualizationMarkersCfg = GREEN_ARROW_X_MARKER_CFG.replace(
     #     prim_path="/Visuals/Command/pose_goal"
     # )
-    goal_pose_visualizer_cfg: VisualizationMarkersCfg = ORANGE_SPHERE_MARKER_CFG.replace(
+    goal_pose_visualizer_cfg: VisualizationMarkersCfg = GREEN_SPHERE_MARKER_CFG.replace(
         prim_path="/Visuals/Command/pose_goal"
     )
     """The configuration for the goal pose visualization marker. Defaults to GREEN_ARROW_X_MARKER_CFG."""
@@ -268,7 +269,7 @@ class UniformPose2dCommandCfg(CommandTermCfg):
     """The configuration for the current pose visualization marker. Defaults to BLUE_ARROW_X_MARKER_CFG."""
 
     # Set the scale of the visualization markers to (0.2, 0.2, 0.8)
-    curr_pose_visualizer_cfg.markers["arrow"].scale = (0.2, 0.2, 0.8)
+    curr_pose_visualizer_cfg.markers["arrow"].scale = (0.5, 0.5, 0.5)
 
     connection_visualizer_cfg: VisualizationMarkersCfg | None = None
     """The configuration for the current and goal pose connection visualization marker. Defaults to None."""

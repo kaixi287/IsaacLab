@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -23,9 +23,9 @@ import omni.isaac.lab.utils.math as math_utils
 import omni.isaac.lab.utils.string as string_utils
 from omni.isaac.lab.actuators import ActuatorBase, ActuatorBaseCfg, ImplicitActuator
 from omni.isaac.lab.markers import VisualizationMarkers
-from omni.isaac.lab.markers.config import (
+from omni.isaac.lab.markers.config import (  # GREEN_JOINT_MARKER_CFG,
     GREEN_ARROW_X_MARKER_CFG,
-    GREEN_JOINT_MARKER_CFG,
+    ORANGE_JOINT_MARKER_CFG,
     YELLOW_ARROW_X_MARKER_CFG,
     YELLOW_JOINT_MARKER_CFG,
 )
@@ -287,7 +287,7 @@ class Articulation(AssetBase):
             # If we differentiate between in-distribution and OOD joints, create green markers for OOD ones
             if self.in_distribution_joint_ids:
                 if not hasattr(self, "green_joint_marker"):
-                    green_marker_cfg = GREEN_JOINT_MARKER_CFG.copy()
+                    green_marker_cfg = ORANGE_JOINT_MARKER_CFG.copy()
                     green_marker_cfg.prim_path = "/Visuals/Joints/Green"
                     self.green_joint_marker = VisualizationMarkers(green_marker_cfg)
                 # set visibility to true

@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -166,11 +166,11 @@ YELLOW_JOINT_MARKER_CFG = VisualizationMarkersCfg(
     }
 )
 
-PINK_JOINT_MARKER_CFG = VisualizationMarkersCfg(
+ORANGE_JOINT_MARKER_CFG = VisualizationMarkersCfg(
     markers={
         "disabled_joints": sim_utils.SphereCfg(
             radius=0.1,
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.0, 1.0)),  # RGB for pink
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.15, 0.0)),  # RGB for orange
         ),
     }
 )

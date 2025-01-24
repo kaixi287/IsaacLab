@@ -15,7 +15,7 @@ from omni.isaac.lab.assets import Articulation
 from omni.isaac.lab.managers import CommandTerm
 from omni.isaac.lab.markers import VisualizationMarkers
 from omni.isaac.lab.terrains import TerrainImporter
-from omni.isaac.lab.utils.math import quat_from_euler_xyz, quat_rotate_inverse, wrap_to_pi, yaw_quat
+from omni.isaac.lab.utils.math import quat_from_euler_xyz, quat_mul, quat_rotate_inverse, wrap_to_pi, yaw_quat
 
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedEnv
@@ -120,12 +120,14 @@ class UniformPose2dCommand(CommandTerm):
             r = torch.empty(len(resample_env_ids), device=self.device)
             if self.cfg.polar_sampling:
                 # Sample random radii and angles for polar coordinates
-                radius = r.uniform_(*self.cfg.polar_ranges.radius)
-                angle = r.uniform_(*self.cfg.polar_ranges.theta)
+                # radius = r.uniform_(*self.cfg.polar_ranges.radius)
+                # angle = r.uniform_(*self.cfg.polar_ranges.theta)
 
                 # radius = torch.tensor([4] * len(env_ids), device=self.device, dtype=torch.float)
                 # angle = torch.tensor([-torch.pi/2, torch.pi/2, -torch.pi/2, torch.pi/2, -torch.pi/2, torch.pi/2, -torch.pi/2, torch.pi/2],
                 #             device=self.device, dtype=torch.float)
+                radius = torch.tensor([3.5] * len(env_ids), device=self.device, dtype=torch.float)
+                angle = torch.tensor([torch.pi / 2], device=self.device, dtype=torch.float)
                 # angle = torch.tensor([torch.pi/2, torch.pi/4, torch.pi/2, 3*torch.pi/4, -torch.pi/2, -torch.pi/4, -torch.pi/2, -3*torch.pi/4],
                 #     device=self.device, dtype=torch.float)
 
@@ -211,9 +213,11 @@ class UniformPose2dCommand(CommandTerm):
         base_pos_w = self.robot.data.root_pos_w.clone()
         base_pos_w[:, 2] = _pos_command_w[:, 2]
         # -- resolve the scales and quaternions
-        base_quat_w = self.robot.data.root_quat_w
+        # base_quat_w = self.robot.data.root_quat_w
+
+        vel_arrow_scale, vel_arrow_quat = self._resolve_xy_velocity_to_arrow(self.robot.data.root_lin_vel_b[:, :2])
         # display markers
-        self.curr_pose_visualizer.visualize(base_pos_w, base_quat_w)
+        self.curr_pose_visualizer.visualize(base_pos_w, vel_arrow_quat, vel_arrow_scale)
 
         # Visualize the connection between the robot and the goal
         if hasattr(self, "connection_visualizer"):
@@ -238,6 +242,23 @@ class UniformPose2dCommand(CommandTerm):
                 orientations=connection_orientations,
                 scales=connection_scales,
             )
+
+    def _resolve_xy_velocity_to_arrow(self, xy_velocity: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """Converts the XY base velocity command to arrow direction rotation."""
+        # obtain default scale of the marker
+        default_scale = self.curr_pose_visualizer.cfg.markers["arrow"].scale
+        # arrow-scale
+        arrow_scale = torch.tensor(default_scale, device=self.device).repeat(xy_velocity.shape[0], 1)
+        arrow_scale[:, 0] *= torch.linalg.norm(xy_velocity, dim=1) * 3.0
+        # arrow-direction
+        heading_angle = torch.atan2(xy_velocity[:, 1], xy_velocity[:, 0])
+        zeros = torch.zeros_like(heading_angle)
+        arrow_quat = quat_from_euler_xyz(zeros, zeros, heading_angle)
+        # convert everything back from base to world frame
+        base_quat_w = self.robot.data.root_quat_w
+        arrow_quat = quat_mul(base_quat_w, arrow_quat)
+
+        return arrow_scale, arrow_quat
 
 
 class TerrainBasedPose2dCommand(UniformPose2dCommand):

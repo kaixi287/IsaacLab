@@ -2,39 +2,45 @@
 
 # Array of load_run arguments
 load_mlp_runs=(
-    # "2024-11-25_00-49-47_mlp_aug_joint_15"
-    # "2024-11-25_00-51-50_mlp_aug_joint_16"
-    # "2024-11-25_00-54-18_mlp_aug_joint_17"
-    # "2024-11-25_00-56-17_mlp_aug_joint_18"
-    # "2024-11-25_00-58-54_mlp_aug_joint_19"
-    # "2024-11-25_08-07-40_mlp_lf_joint_15"
-    # "2024-11-25_08-09-36_mlp_lf_joint_16"
-    # "2024-11-25_08-11-34_mlp_lf_joint_17"
-    # "2024-11-25_08-12-55_mlp_lf_joint_18"
-    # "2024-11-25_08-15-00_mlp_lf_joint_19"
-    # "2024-11-25_08-55-25_mlp_rand_joint_15"
-    # "2024-11-25_08-57-29_mlp_rand_joint_16"
-    # "2024-11-25_08-58-54_mlp_rand_joint_17"
-    # "2024-11-25_09-01-57_mlp_rand_joint_18"
-    # "2024-11-25_09-03-06_mlp_rand_joint_19"
+    "2025-01-07_12-39-14_mlp_aug_joint_0"
+    "2025-01-07_12-39-47_mlp_aug_joint_1"
+    "2025-01-07_12-39-47_mlp_aug_joint_2"
+    "2025-01-07_12-40-50_mlp_aug_joint_3"
+    "2025-01-07_12-40-50_mlp_aug_joint_5"
+    "2025-01-07_12-41-15_mlp_aug_joint_4"
+    "2025-01-07_12-47-42_mlp_lf_joint_0"
+    "2025-01-07_12-47-42_mlp_lf_joint_1"
+    "2025-01-07_12-48-44_mlp_lf_joint_2"
+    "2025-01-07_12-49-29_mlp_lf_joint_3"
+    "2025-01-07_12-50-05_mlp_lf_joint_4"
+    "2025-01-07_12-52-45_mlp_lf_joint_5"
+    "2025-01-07_13-04-14_mlp_rand_joint_0"
+    "2025-01-07_13-04-58_mlp_rand_joint_1"
+    "2025-01-07_13-05-13_mlp_rand_joint_3"
+    "2025-01-07_13-05-14_mlp_rand_joint_2"
+    "2025-01-07_13-05-14_mlp_rand_joint_4"
+    "2025-01-07_13-05-14_mlp_rand_joint_5"
 )
 
 load_rnn_runs=(
-    # "2024-11-25_01-00-02_rnn_aug_joint_15"
-    "2024-11-25_01-03-36_rnn_aug_joint_16"
-    "2024-11-25_01-07-15_rnn_aug_joint_17"
-    "2024-11-25_01-11-06_rnn_aug_joint_18"
-    "2024-11-25_01-14-47_rnn_aug_joint_19"
-    "2024-11-25_08-17-40_rnn_lf_joint_15"
-    "2024-11-25_08-21-23_rnn_lf_joint_16"
-    "2024-11-25_08-24-32_rnn_lf_joint_17"
-    "2024-11-25_08-28-55_rnn_lf_joint_18"
-    "2024-11-25_08-32-00_rnn_lf_joint_19"
-    "2024-11-25_09-06-33_rnn_rand_joint_15"
-    "2024-11-25_09-10-09_rnn_rand_joint_16"
-    "2024-11-25_09-13-11_rnn_rand_joint_17"
-    "2024-11-25_09-17-17_rnn_rand_joint_18"
-    "2024-11-25_09-20-37_rnn_rand_joint_19"
+    "2025-01-07_12-52-20_rnn_lf_joint_0"
+    "2025-01-07_12-52-45_rnn_lf_joint_1"
+    "2025-01-07_12-53-40_rnn_lf_joint_2"
+    "2025-01-07_12-53-40_rnn_lf_joint_3"
+    "2025-01-07_12-53-40_rnn_lf_joint_4"
+    "2025-01-07_12-56-31_rnn_lf_joint_5"
+    "2025-01-07_13-07-46_rnn_rand_joint_0"
+    "2025-01-07_13-07-46_rnn_rand_joint_1"
+    "2025-01-07_13-09-40_rnn_rand_joint_2"
+    "2025-01-07_13-10-10_rnn_rand_joint_3"
+    "2025-01-07_13-10-45_rnn_rand_joint_4"
+    "2025-01-07_13-11-28_rnn_rand_joint_5"
+    "2025-01-07_12-41-38_rnn_aug_joint_0"
+    "2025-01-07_12-42-31_rnn_aug_joint_1"
+    "2025-01-07_12-43-17_rnn_aug_joint_2"
+    "2025-01-07_12-43-48_rnn_aug_joint_3"
+    "2025-01-07_12-43-48_rnn_aug_joint_4"
+    "2025-01-07_12-44-56_rnn_aug_joint_5"
 )
 
 
@@ -52,10 +58,10 @@ for run in "${load_mlp_runs[@]}"; do
     fi
 
     # Execute the command with the current load_run argument and appropriate log_run_name
-    ./docker/cluster/cluster_interface.sh job base --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 1000 --seed 7 --logger wandb --log_project_name anymal_pos_tracking_joint_failure_id_eval_final --log_run_name "$log_run_name" --actor_critic_class_name ActorCritic
+    ./docker/cluster/cluster_interface.sh job base --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 1000 --seed 24 --logger wandb --log_project_name aynmal_pos_tracking_payload_id_eval_concat3 --log_run_name "$log_run_name"_ood --actor_critic_class_name ActorCritic
 
     # Wait for 10 minutes (600 seconds) before running the next command
-    sleep 20
+    sleep 10
 done
 
 # Loop through each load_run argument
@@ -72,8 +78,8 @@ for run in "${load_rnn_runs[@]}"; do
     fi
 
     # Execute the command with the current load_run argument and appropriate log_run_name
-    ./docker/cluster/cluster_interface.sh job base --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 1000 --seed 7 --logger wandb --log_project_name anymal_pos_tracking_joint_failure_id_eval_final --log_run_name "$log_run_name" --actor_critic_class_name ActorCriticRecurrent
+    ./docker/cluster/cluster_interface.sh job base --task Isaac-PosTracking-Flat-Anymal-D-Play-v0 --headless --enable_cameras --load_run "$run" --num_envs 1000 --seed 24 --logger wandb --log_project_name aynmal_pos_tracking_payload_id_eval_concat3 --log_run_name "$log_run_name"_ood --actor_critic_class_name ActorCriticRecurrent
 
     # Wait for 10 minutes (600 seconds) before running the next command
-    sleep 20
+    sleep 10
 done
