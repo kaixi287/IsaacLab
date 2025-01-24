@@ -65,11 +65,18 @@ class ObservationsCfg:
             func=mdp.projected_gravity,
             noise=Unoise(n_min=-0.05, n_max=0.05),
         )
+        # base_lin_vel = ObsTerm(func=mdp.base_lin_vel)
+        # base_ang_vel = ObsTerm(func=mdp.base_ang_vel)
+        # projected_gravity = ObsTerm(
+        #     func=mdp.projected_gravity
+        # )
         pos_commands = ObsTerm(func=mdp.pos_commands, params={"command_name": "pose_command"})
         # heading_commands = ObsTerm(func=mdp.heading_commands_sin, params={"command_name": "pose_command"})
         time_to_target = ObsTerm(func=mdp.time_to_target, params={"command_name": "pose_command"})
         joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
+        # joint_pos = ObsTerm(func=mdp.joint_pos_rel)
+        # joint_vel = ObsTerm(func=mdp.joint_vel_rel)
         actions = ObsTerm(func=mdp.last_action)
         height_scan = ObsTerm(
             func=mdp.height_scan,
@@ -131,6 +138,22 @@ class EventCfg:
         },
     )
 
+    # reset_base = EventTerm(
+    #     func=mdp.reset_root_state_uniform,
+    #     mode="reset",
+    #     params={
+    #         "pose_range": {"x": (0.0, 0.0), "y": (0.0, 0.0), "yaw": (-3.14/2, -3.14/2)},
+    #         "velocity_range": {
+    #             "x": (0.0, 0.0),
+    #             "y": (0.0, 0.0),
+    #             "z": (0.0, 0.0),
+    #             "roll": (0.0, 0.0),
+    #             "pitch": (0.0, 0.0),
+    #             "yaw": (0.0, 0.0),
+    #         },
+    #     },
+    # )
+
     reset_robot_joints = EventTerm(
         func=mdp.reset_joints_by_scale,
         mode="reset",
@@ -144,17 +167,17 @@ class EventCfg:
     #     func=mdp.add_payload_to_body,
     #     mode="reset",
     #     params={
-    #         "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-    #         "mass_range": (30.0, 40.0),
-    #         "x_position_range": (-0.4, 0.4),
-    #         "y_position_range": (-0.08, 0.08),
-    #         "z_position_range": (0.1325, 0.1325),
-    #         # "asset_cfg": SceneEntityCfg("robot", body_names="torso_link"),
-    #         # "mass_range": (40.0, 50.0),
-    #         # "x_position_range": (-0.07, 0.07),
-    #         # # "y_position_range": [(-0.11, -0.08), (0.08, 0.11)],
+    #         # "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+    #         # "mass_range": (30.0, 40.0),
+    #         # "x_position_range": (-0.4, 0.4),
+    #         # "y_position_range": (-0.08, 0.08),
+    #         # "z_position_range": (0.1325, 0.1325),
+    #         "asset_cfg": SceneEntityCfg("robot", body_names="torso_link"),
+    #         "mass_range": (40.0, 50.0),
+    #         "x_position_range": (-0.07, 0.07),
+    #         "y_position_range": [(-0.11, -0.08), (0.08, 0.11)],
     #         # "y_position_range": (0.08, 0.11),
-    #         # "z_position_range": (0.31, 0.31),
+    #         "z_position_range": (0.31, 0.31),
     #     },
     # )
 
@@ -163,7 +186,7 @@ class EventCfg:
         mode="reset",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "joint_to_disable": -1,  # Index of joint to disable
+            "joint_to_disable": [0, 4, 8],  # Index of joint to disable
             "prob_no_disable": 0.2,
         },
     )
@@ -198,6 +221,14 @@ class RewardsCfg:
             "threshold": 0.5,
         },
     )
+    # contact_frequency = RewTerm(
+    #     func=mdp.contact_frequencey,
+    #     weight=1.0,
+    #     params={
+    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*FOOT"),
+    #         "command_name": "pose_command",
+    #     },
+    # )
 
     # Task related rewards
     dont_wait = RewTerm(func=mdp.dont_wait, weight=-1.0, params={"min_vel": 0.2, "command_name": "pose_command"})

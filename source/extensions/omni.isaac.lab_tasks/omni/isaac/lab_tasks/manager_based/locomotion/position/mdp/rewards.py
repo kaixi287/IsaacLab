@@ -54,6 +54,17 @@ def feet_air_time(
     return reward
 
 
+def contact_frequencey(env: ManagerBasedRLEnv, command_name: str, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+    # extract the used quantities (to enable type-hinting)
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    # compute the reward
+    first_contact = contact_sensor.compute_first_contact(env.step_dt)[:, sensor_cfg.body_ids]
+    reward = torch.sum(first_contact, dim=1)
+    # no reward for zero command
+    reward *= torch.norm(env.command_manager.get_command(command_name)[:, :1], dim=1) > 0.1
+    return reward
+
+
 def tracking_pos(
     env: ManagerBasedRLEnv, duration: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
 ):
@@ -261,13 +272,17 @@ def move_in_direction(
 
 # -- stalling penalty
 def dont_wait(
-    env: ManagerBasedRLEnv, min_vel: str, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+    env: ManagerBasedRLEnv,
+    min_vel: str,
+    command_name: str,
+    threshold: float = 0.25,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
 ) -> torch.Tensor:
     """Penalize stalling."""
     command = env.command_manager.get_term(command_name)
 
     asset: RigidObject = env.scene[asset_cfg.name]
-    far_away = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1) > 0.25
+    far_away = torch.norm(command.pos_command_w[:, :2] - asset.data.root_pos_w[:, :2], dim=1) > threshold
     waiting = torch.norm(asset.data.root_lin_vel_w[:, :2], dim=1) < min_vel
 
     return far_away * waiting
